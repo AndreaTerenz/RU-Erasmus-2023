@@ -1,7 +1,7 @@
 from abc import ABC
 import numpy as np
 
-from Control3DBase.Geometry import Point, Vector
+from oven_engine.utils.geometry import Vector3D
 
 def set_values_in_matrix(matrix, idx_val_zip):
     for idx, val in idx_val_zip:
@@ -58,11 +58,11 @@ class ModelMatrix(Matrix):
 
     ## MAKE OPERATIONS TO ADD TRANLATIONS, SCALES AND ROTATIONS ##
     # ---
-    def add_translation(self, x : [float|Vector], y = None, z = None):
-        if type(x) is Vector:
+    def add_translation(self, x : [float|Vector3D], y = None, z = None):
+        if type(x) is Vector3D:
             offset = x
         else:
-            offset = Vector(x, y, z)
+            offset = Vector3D(x, y, z)
 
         translation_matrix = np.eye(4).flatten()
         set_values_in_matrix(translation_matrix, zip([3, 7, 11], [offset.x, offset.y, offset.z]))
@@ -96,8 +96,8 @@ class ModelMatrix(Matrix):
 
         self.add_transformation(rotation_matrix)
 
-    def add_rotation(self, angle_x: [float|Vector], angle_y = None, angle_z = None):
-        if type(angle_x) is Vector:
+    def add_rotation(self, angle_x: [float|Vector3D], angle_y = None, angle_z = None):
+        if type(angle_x) is Vector3D:
             angle_x, angle_y, angle_z = angle_x.x, angle_x.y, angle_x.z
 
         rotation_matrix = np.eye(4).flatten()
@@ -114,11 +114,11 @@ class ModelMatrix(Matrix):
 
         self.add_transformation(rotation_matrix)
 
-    def add_scale(self, x : [float|Vector], y = None, z = None):
-        if type(x) is Vector:
+    def add_scale(self, x : [float|Vector3D], y = None, z = None):
+        if type(x) is Vector3D:
             scale = x
         else:
-            scale = Vector(x, y, z)
+            scale = Vector3D(x, y, z)
 
         scale_matrix = np.eye(4).flatten()
         set_values_in_matrix(scale_matrix, zip([0, 5, 10], [scale.x, scale.y, scale.z]))
@@ -141,16 +141,16 @@ class ModelMatrix(Matrix):
 
 class ViewMatrix:
     def __init__(self):
-        self.eye = Point(0, 0, 0)
-        self.u = Vector(1, 0, 0)
-        self.v = Vector(0, 1, 0)
-        self.n = Vector(0, 0, 1)
+        self.eye = Vector3D(0,0,0)
+        self.u = Vector3D(1, 0, 0)
+        self.v = Vector3D(0, 1, 0)
+        self.n = Vector3D(0, 0, 1)
 
     ## MAKE OPERATIONS TO ADD LOOK, SLIDE, PITCH, YAW and ROLL ##
     # ---
 
     def get_matrix(self):
-        minusEye = Vector(-self.eye.x, -self.eye.y, -self.eye.z)
+        minusEye = Vector3D(-self.eye.x, -self.eye.y, -self.eye.z)
         return [self.u.x, self.u.y, self.u.z, minusEye.dot(self.u),
                 self.v.x, self.v.y, self.v.z, minusEye.dot(self.v),
                 self.n.x, self.n.y, self.n.z, minusEye.dot(self.n),

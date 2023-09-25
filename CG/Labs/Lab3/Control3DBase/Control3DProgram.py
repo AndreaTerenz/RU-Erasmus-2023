@@ -9,6 +9,8 @@ from Control3DBase.Base3DObjects import Cube1, Cube2, Cube3
 from Control3DBase.Matrices import *
 from Control3DBase.Shaders import *
 
+from oven_engine.utils.geometry import Vector3D
+
 
 class GraphicsProgram3D:
     def __init__(self, bg_color = (0.0, 0.0, 0.0, 1.0)):
@@ -20,8 +22,8 @@ class GraphicsProgram3D:
 
         self.cubes = [
             Cube1(self, size=0.4),
-            Cube2(self, origin=Vector(-3., 0., 0.), size=0.4),
-            Cube3(self, origin=Vector(0., 2., 0.), size=0.4),
+            Cube2(self, origin=Vector3D(-3., 0., 0.), size=0.4),
+            Cube3(self, origin=Vector3D(0., 2., 0.), size=0.4),
         ]
 
         self.clock = pygame.time.Clock()

@@ -5,17 +5,18 @@ import math
 
 from OpenGL.GL import *
 
-from Control3DBase.Geometry import Vector
+from oven_engine.utils.geometry import Vector3D
+#from Control3DBase.Geometry import Vector3D
 from Control3DBase.Matrices import ModelMatrix
 from Control3DBase.Shaders import Shader3D
 
 
 class Cube(ABC):
-    def __init__(self, parent_app, origin = Vector(0, 0, 0), size=1., color=(1.0, 0.0, 1.0)):
+    def __init__(self, parent_app, origin = Vector3D.ZERO, size=1., color=(1.0, 0.0, 1.0)):
         self.parent_app = parent_app
         self.origin = origin
-        self.rotation = Vector(0, 0, 0)
-        self.scale = Vector(1, 1, 1)
+        self.rotation = Vector3D.ZERO
+        self.scale = Vector3D.ONE
         self.model_matrix = ModelMatrix()
 
         self.shader = Shader3D(shader_folder="Control3DBase/Shader Files")
@@ -81,7 +82,7 @@ class Cube(ABC):
     def _update(self, delta):
         pass
 
-    def translate(self, offset):
+    def translate(self, offset: Vector3D):
         self.origin += offset
 
     def scale(self, factor):
@@ -91,32 +92,32 @@ class Cube(ABC):
         self.rotation += angle * axis
 
 class Cube1(Cube):
-    def __init__(self, parent_app, origin = Vector(0, 0, 0), speed =1., size=1.):
+    def __init__(self, parent_app, origin = Vector3D.ZERO, speed =1., size=1.):
         super().__init__(parent_app, origin, size)
         self.speed = speed
 
     def _update(self, delta):
         fact = math.sin(self.parent_app.ticks / 500.)
-        self.origin.z += delta * fact * self.speed
+        self.translate(Vector3D.FORWARD * delta * fact * self.speed)
 
 class Cube2(Cube):
-    def __init__(self, parent_app, origin = Vector(0, 0, 0), size=1.):
+    def __init__(self, parent_app, origin = Vector3D.ZERO, size=1.):
         super().__init__(parent_app, origin, size)
 
     def _update(self, delta):
         fact = math.sin(self.parent_app.ticks / 500.)
         fact = (fact + 1.) / 2. # Remap [-1, 1] to [0, 1]
 
-        self.scale = Vector(fact * 2., 1, 1)
+        self.scale = Vector3D(fact * 2., 1, 1)
 
 class Cube3(Cube):
-    def __init__(self, parent_app, origin = Vector(0, 0, 0), size=1.):
+    def __init__(self, parent_app, origin = Vector3D.ZERO, size=1.):
         super().__init__(parent_app, origin, size)
 
     def _update(self, delta):
-        self.rotate(delta, Vector(0, 1, 0))
+        self.rotate(delta, Vector3D(0, 1, 0))
 
         fact = math.sin(self.parent_app.ticks / 500.)
         fact = (fact + 1.) / 2. # Remap [-1, 1] to [0, 1]
 
-        self.scale = Vector(fact * 2., 1, 1)
+        self.scale = Vector3D(fact * 2., 1, 1)
