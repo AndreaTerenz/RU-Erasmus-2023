@@ -336,6 +336,23 @@ class Vector3D(AbstractVector):
 
         super().__init__([self.x, self.y, self.z])
 
+    def __getattribute__(self, item: str):
+        if len(item) == 2:
+            comps = {
+                "x": self.x,
+                "y": self.y,
+                "z": self.z
+            }
+
+            if item[0] in comps and item[1] in comps:
+                return Vector2D(comps[item[0]], comps[item[1]])
+
+        return super().__getattribute__(item)
+
+    @staticmethod
+    def from_Vector2D(vec: Vector2D):
+        return Vector3D(vec.x, vec.y, 0.)
+
     @classproperty
     def ONE(self):
         return Vector3D(1.)
@@ -434,3 +451,5 @@ if __name__ == '__main__':
     b = Vector3D(4., 5., 6.)
 
     print(a+b)
+    print(a.xy)
+    print(b.zy)

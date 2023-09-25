@@ -12,20 +12,17 @@ from Control3DBase.Shaders import Shader3D
 
 
 class Cube(ABC):
-    def __init__(self, parent_app, origin = Vector3D.ZERO, size=1., color=(1.0, 0.0, 1.0)):
+    def __init__(self, parent_app, origin = Vector3D.ZERO, size=1., color=(1.0, 0.0, 1.0), vertex_shader=None, frag_shader=None):
         self.parent_app = parent_app
         self.origin = origin
         self.rotation = Vector3D.ZERO
         self.scale = Vector3D.ONE
         self.model_matrix = ModelMatrix()
 
-        self.shader = Shader3D(shader_folder="Control3DBase/Shader Files")
+        self.shader = Shader3D()
         self.shader.use()
         self.shader.set_solid_color(color[0], color[1], color[2])
         self.shader.set_projection_view_matrix(self.parent_app.projection_view_matrix.get_matrix())
-
-        self.model_matrix.add_translation(self.origin)
-        self.model_matrix.add_scale(self.scale)
 
         self.position_array = np.array(
                             [-1, -1, -1,
@@ -93,7 +90,7 @@ class Cube(ABC):
 
 class Cube1(Cube):
     def __init__(self, parent_app, origin = Vector3D.ZERO, speed =1., size=1.):
-        super().__init__(parent_app, origin, size)
+        super().__init__(parent_app, origin, size, color=(1.0, 0.0, 0.0))
         self.speed = speed
 
     def _update(self, delta):
@@ -102,7 +99,7 @@ class Cube1(Cube):
 
 class Cube2(Cube):
     def __init__(self, parent_app, origin = Vector3D.ZERO, size=1.):
-        super().__init__(parent_app, origin, size)
+        super().__init__(parent_app, origin, size, color=(0.0, 1.0, 0.0))
 
     def _update(self, delta):
         fact = math.sin(self.parent_app.ticks / 500.)
@@ -112,7 +109,7 @@ class Cube2(Cube):
 
 class Cube3(Cube):
     def __init__(self, parent_app, origin = Vector3D.ZERO, size=1.):
-        super().__init__(parent_app, origin, size)
+        super().__init__(parent_app, origin, size, color=(0.0, 0.0, 1.0))
 
     def _update(self, delta):
         self.rotate(delta, Vector3D(0, 1, 0))

@@ -2,10 +2,21 @@
 from OpenGL.GL import *
 import os.path as path
 
+DEFAULT_SHADER_DIR = path.join("Control3DBase", "Shader Files")
+DEFAULT_VERTEX = "simple3D.vert"
+DEFAULT_FRAG = "simple3D.frag"
+
 class Shader3D:
-    def __init__(self, vert_shader_path = "simple3D.vert", frag_shader_path = "simple3D.frag", shader_folder = "Control3DBase/Shader Files"):
-        frag_shader = Shader3D.get_shader((path.join(shader_folder, vert_shader_path)), GL_VERTEX_SHADER)
-        vert_shader = Shader3D.get_shader((path.join(shader_folder, frag_shader_path)), GL_FRAGMENT_SHADER)
+    def __init__(self, vert_shader_path = None, frag_shader_path = None, shader_folder = None):
+        if vert_shader_path is None:
+            vert_shader_path = DEFAULT_VERTEX
+        if frag_shader_path is None:
+            frag_shader_path = DEFAULT_FRAG
+        if shader_folder is None:
+            shader_folder = DEFAULT_SHADER_DIR
+
+        frag_shader = Shader3D.get_shader(vert_shader_path, GL_VERTEX_SHADER, shader_folder=shader_folder)
+        vert_shader = Shader3D.get_shader(frag_shader_path, GL_FRAGMENT_SHADER, shader_folder=shader_folder)
 
         self.renderingProgramID = glCreateProgram()
         glAttachShader(self.renderingProgramID, vert_shader)
@@ -20,19 +31,38 @@ class Shader3D:
         self.projectionViewMatrixLoc = self.get_uniform_loc("u_projection_view_matrix")
 
     @staticmethod
-    def get_shader(shader_path: str, shader_type: int):
+    def get_shader(shader_file: str, shader_type: int, use_fallback = True, shader_folder: str = None):
         if not shader_type in [GL_VERTEX_SHADER, GL_FRAGMENT_SHADER]:
             return -1
 
         shader_id = glCreateShader(shader_type)
 
-        with open(shader_path) as shader_file:
-            glShaderSource(shader_id, shader_file.read())
+        shader_path = shader_file
+        if shader_folder is not None:
+            shader_path = path.join(shader_folder, shader_file)
+
+        try:
+            with open(shader_path) as shader_file:
+                glShaderSource(shader_id, shader_file.read())
+        except FileNotFoundError:
+            print(f"Couldn't find shader file: '{shader_path}'")
+
+            if not use_fallback:
+                return -1
+
+            print("Using fallback shader")
+            fallback_path = ""
+            if shader_type == GL_VERTEX_SHADER:
+                fallback_path = path.join(DEFAULT_SHADER_DIR, DEFAULT_VERTEX)
+            elif shader_type == GL_FRAGMENT_SHADER:
+                fallback_path = path.join(DEFAULT_SHADER_DIR, DEFAULT_FRAG)
+
+            return Shader3D.get_shader(fallback_path, shader_type, False)
 
         glCompileShader(shader_id)
         result = glGetShaderiv(shader_id, GL_COMPILE_STATUS)
         if result != 1:  # shader didn't compile
-            print("Couldn't compile vertex shader\nShader compilation Log:\n" + str(glGetShaderInfoLog(shader_id)))
+            print(f"Couldn't compile vertex shader\nShader compilation Log:\n{str(glGetShaderInfoLog(shader_id))}")
             return -1
 
         return shader_id
