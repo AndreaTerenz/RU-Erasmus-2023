@@ -46,8 +46,7 @@ class AbstractVector(ABC):
         return self.components[item]
 
     def __iter__(self):
-        for comp in self.components:
-            yield comp
+        return iter(self.components)
 
     def __abs__(self):
         return self.from_values([math.fabs(c) for c in self.components])
@@ -434,6 +433,13 @@ class Vector3D(AbstractVector):
         plane_normal = plane_normal.normalized
         return self - self.dot(plane_normal) * plane_normal
 
+    def rotate(self, angle, axis):
+        axis = axis.normalized
+        cos_angle = math.cos(angle)
+        sin_angle = math.sin(angle)
+
+        return self * cos_angle + axis.cross(self) * sin_angle + axis * axis.dot(self) * (1. - cos_angle)
+
 
 if __name__ == '__main__':
     v = Vector2D(-10, 10)
@@ -453,3 +459,7 @@ if __name__ == '__main__':
     print(a+b)
     print(a.xy)
     print(b.zy)
+
+    u, v, _ = a.rotate(math.tau/4., b)
+    print(u)
+    print(v)

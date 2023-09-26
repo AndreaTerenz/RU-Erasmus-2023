@@ -148,9 +148,49 @@ class ViewMatrix:
 
     ## MAKE OPERATIONS TO ADD LOOK, SLIDE, PITCH, YAW and ROLL ##
     # ---
+    def look_at(self, eye, target, up_vector = Vector3D.UP):
+        self.eye = eye
+        self.n = (eye - target).normalized
+        self.u = up_vector.cross(self.n).normalized
+        self.v = self.n.cross(self.u)
+
+    def slide(self, del_u, del_v, del_n):
+        self.eye += del_u * self.u + del_v * self.v + del_n * self.n
+
+    def rotate_x(self, angle):
+        """
+        Rotates the camera around its x-axis (Pitch)
+        :param angle: angle to rotate by
+        """
+        self.n, self.v = ViewMatrix.__rotate_axes(self.n, self.v, angle)
+
+    def rotate_y(self, angle):
+        """
+        Rotates the camera around its y-axis (Yaw)
+        :param angle: angle to rotate by
+        """
+        self.u, self.n = ViewMatrix.__rotate_axes(self.u, self.n, angle)
+
+    def rotate_z(self, angle):
+        """
+        Rotates the camera around its z-axis (Roll)
+        :param angle: angle to rotate by
+        """
+        self.u, self.v = ViewMatrix.__rotate_axes(self.u, self.v, angle)
+
+    @staticmethod
+    def __rotate_axes(a, b, angle):
+        c = np.cos(angle)
+        s = np.sin(angle)
+        old_a = a
+
+        a = c * a + s * b
+        b = -s * old_a + c * b
+
+        return a, b
 
     def get_matrix(self):
-        minusEye = Vector3D(-self.eye.x, -self.eye.y, -self.eye.z)
+        minusEye = -self.eye
         return [self.u.x, self.u.y, self.u.z, minusEye.dot(self.u),
                 self.v.x, self.v.y, self.v.z, minusEye.dot(self.v),
                 self.n.x, self.n.y, self.n.z, minusEye.dot(self.n),
@@ -161,18 +201,26 @@ class ViewMatrix:
 # the camera's "lens"
 
 class ProjectionMatrix:
-    def __init__(self):
-        self.left = -1
-        self.right = 1
-        self.bottom = -1
-        self.top = 1
-        self.near = -1
-        self.far = 1
+    def __init__(self, near, far, left, bottom=None, right=None, top=None, ortho=True):
+        if bottom is None:
+            bottom = left
+        if right is None:
+            right = -left
+        if top is None:
+            top = -bottom
 
-        self.is_orthographic = True
+        self.left = min(left, right)
+        self.right = max(left, right)
+        self.bottom = min(bottom, top)
+        self.top = max(bottom, top)
+        self.near = min(near, far)
+        self.far = max(near, far)
+
+        self.is_orthographic = ortho
 
     ## MAKE OPERATION TO SET PERSPECTIVE PROJECTION (don't forget to set is_orthographic to False) ##
     # ---
+
 
     def set_orthographic(self, left, right, bottom, top, near, far):
         self.left = left

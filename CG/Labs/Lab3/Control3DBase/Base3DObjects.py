@@ -8,7 +8,7 @@ from OpenGL.GL import *
 from oven_engine.utils.geometry import Vector3D
 #from Control3DBase.Geometry import Vector3D
 from Control3DBase.Matrices import ModelMatrix
-from Control3DBase.Shaders import Shader3D
+from Control3DBase.Shaders import Shader3D, CubeShader
 
 
 class Cube(ABC):
@@ -18,11 +18,6 @@ class Cube(ABC):
         self.rotation = Vector3D.ZERO
         self.scale = Vector3D.ONE
         self.model_matrix = ModelMatrix()
-
-        self.shader = Shader3D()
-        self.shader.use()
-        self.shader.set_solid_color(color[0], color[1], color[2])
-        self.shader.set_projection_view_matrix(self.parent_app.projection_view_matrix.get_matrix())
 
         self.position_array = np.array(
                             [-1, -1, -1,
@@ -56,17 +51,26 @@ class Cube(ABC):
                                      [-1.0, 0.0,  0.0] * 6 +
                                      [1.0,  0.0,  0.0] * 6)
 
+        self.shader = CubeShader()
+        self.shader.use()
+        self.shader.set_solid_color(color[0], color[1], color[2])
+        #self.shader.set_projection_view_matrix(self.parent_app.projection_view_matrix.get_matrix())
+        self.shader.set_projection_matrix(self.parent_app.projection_matrix.get_matrix())
+        self.shader.set_view_matrix(self.parent_app.view_matrix.get_matrix())
+        self.shader.set_position_attribute(self.position_array)
+        self.shader.set_normal_attribute(self.normal_array)
+
     def __update_model_matrix(self):
         self.model_matrix.load_identity()
         self.model_matrix.add_translation(self.origin)
         self.model_matrix.add_rotation(self.rotation)
         self.model_matrix.add_scale(self.scale)
 
+        self.shader.set_model_matrix(self.model_matrix.matrix)
+
     def draw(self):
         self.shader.use()
         self.shader.set_model_matrix(self.model_matrix.matrix)
-        self.shader.set_position_attribute(self.position_array)
-        self.shader.set_normal_attribute(self.normal_array)
 
         for k in range(6):
             glDrawArrays(GL_TRIANGLE_FAN, k*4, 4)

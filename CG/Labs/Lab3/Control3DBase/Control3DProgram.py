@@ -18,7 +18,9 @@ class GraphicsProgram3D:
         pygame.init() 
         pygame.display.set_mode((800,600), pygame.OPENGL|pygame.DOUBLEBUF)
 
-        self.projection_view_matrix = ProjectionViewMatrix()
+        self.projection_matrix = ProjectionMatrix(.5, 100, 4)
+        self.view_matrix = ViewMatrix()
+        self.view_matrix.look_at(Vector3D(-5., 5., 5.), Vector3D.ZERO)
 
         self.cubes = [
             Cube1(self, size=0.4),
