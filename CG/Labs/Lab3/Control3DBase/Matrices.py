@@ -1,7 +1,10 @@
+import math
 from abc import ABC
+
 import numpy as np
 
 from oven_engine.utils.geometry import Vector3D
+
 
 def set_values_in_matrix(matrix, idx_val_zip):
     for idx, val in idx_val_zip:
@@ -56,6 +59,19 @@ class ModelMatrix(Matrix):
         self.stack_count = 0
         self.stack_capacity = 0
 
+    @staticmethod
+    def from_transformations(offset: Vector3D, rotation: Vector3D = Vector3D.ZERO, scale:Vector3D = Vector3D.ONE):
+        matrix = ModelMatrix()
+        matrix.add_translation(offset)
+
+        if rotation is not None:
+            matrix.add_rotation(rotation)
+
+        if scale is not None:
+            matrix.add_scale(scale)
+
+        return matrix
+
     ## MAKE OPERATIONS TO ADD TRANLATIONS, SCALES AND ROTATIONS ##
     # ---
     def add_translation(self, x : [float|Vector3D], y = None, z = None):
@@ -69,48 +85,20 @@ class ModelMatrix(Matrix):
 
         self.add_transformation(translation_matrix)
 
-    def add_rotation_x(self, angle):
-        rotation_matrix = np.eye(4).flatten()
-        c = np.cos(angle)
-        s = np.sin(angle)
-
-        set_values_in_matrix(rotation_matrix, zip([5, 6, 9, 10], [c, -s, s, c]))
-
-        self.add_transformation(rotation_matrix)
-
-    def add_rotation_y(self, angle):
-        rotation_matrix = np.eye(4).flatten()
-        c = np.cos(angle)
-        s = np.sin(angle)
-
-        set_values_in_matrix(rotation_matrix, zip([0, 2, 8, 10], [c, s, -s, c]))
-
-        self.add_transformation(rotation_matrix)
-
-    def add_rotation_z(self, angle):
-        rotation_matrix = np.eye(4).flatten()
-        c = np.cos(angle)
-        s = np.sin(angle)
-
-        set_values_in_matrix(rotation_matrix, zip([0, 1, 4, 5], [c, -s, s, c]))
-
-        self.add_transformation(rotation_matrix)
-
     def add_rotation(self, angle_x: [float|Vector3D], angle_y = None, angle_z = None):
         if type(angle_x) is Vector3D:
             angle_x, angle_y, angle_z = angle_x.x, angle_x.y, angle_x.z
 
         rotation_matrix = np.eye(4).flatten()
-        cx = np.cos(angle_x)
-        sx = np.sin(angle_x)
-        cy = np.cos(angle_y)
-        sy = np.sin(angle_y)
-        cz = np.cos(angle_z)
-        sz = np.sin(angle_z)
+        cx, sx = np.cos(angle_x), np.sin(angle_x)
+        cy, sy = np.cos(angle_y), np.sin(angle_y)
+        cz, sz = np.cos(angle_z), np.sin(angle_z)
 
         set_values_in_matrix(rotation_matrix,
                              zip([0, 1, 2, 4, 5, 6, 8, 9, 10],
-                                 [cy*cz, -cy*sz, sy, cx*sz + sx*sy*cz, cx*cz - sx*sy*sz, -sx*cy, sx*sz - cx*sy*cz, sx*cz + cx*sy*sz, cx*cy]))
+                                 [cy*cz,            -cy*sz,            sy,
+                                  cx*sz + sx*sy*cz,  cx*cz - sx*sy*sz, -sx*cy,
+                                  sx*sz - cx*sy*cz,  sx*cz + cx*sy*sz,  cx*cy]))
 
         self.add_transformation(rotation_matrix)
 
@@ -201,117 +189,83 @@ class ViewMatrix:
 # the camera's "lens"
 
 class ProjectionMatrix:
-    def __init__(self, near, far, left, bottom=None, right=None, top=None, ortho=True):
-        if bottom is None:
-            bottom = left
-        if right is None:
-            right = -left
-        if top is None:
-            top = -bottom
+    def __init__(self):
+        self.left = 0.
+        self.right = 0.
+        self.bottom = 0.
+        self.top = 0.
+        self.near = 0.
+        self.far = 0.
 
-        self.left = min(left, right)
-        self.right = max(left, right)
-        self.bottom = min(bottom, top)
-        self.top = max(bottom, top)
-        self.near = min(near, far)
-        self.far = max(near, far)
-
-        self.is_orthographic = ortho
+        self.is_orthographic = False
 
     ## MAKE OPERATION TO SET PERSPECTIVE PROJECTION (don't forget to set is_orthographic to False) ##
     # ---
+    @staticmethod
+    def perspective(fov: float, aspect_ratio: float, near: float, far: float):
+        output = ProjectionMatrix()
 
+        output.near = near
+        output.far = far
 
-    def set_orthographic(self, left, right, bottom, top, near, far):
-        self.left = left
-        self.right = right
-        self.bottom = bottom
-        self.top = top
-        self.near = near
-        self.far = far
-        self.is_orthographic = True
+        output.top = math.tan(fov / 2.) * near
+        output.bottom = -output.top
+
+        output.right = output.top * aspect_ratio
+        output.left = -output.right
+
+        output.is_orthographic = False
+
+        return output
+
+    @staticmethod
+    def ortographic(near: float, far: float, width: float, height: float = None):
+        if height is None:
+            height = width
+
+        hw = width / 2.
+        hh = height / 2.
+
+        output = ProjectionMatrix()
+        output.left = -hw
+        output.right = hw
+        output.bottom = -hh
+        output.top = hh
+        output.near = near
+        output.far = far
+        output.is_orthographic = True
+
+        return output
 
     def get_matrix(self):
+        rl_dist = self.right - self.left
+        tb_dist = self.top - self.bottom
+        fn_dist = self.far - self.near
+
         if self.is_orthographic:
-            A = 2 / (self.right - self.left)
-            B = -(self.right + self.left) / (self.right - self.left)
-            C = 2 / (self.top - self.bottom)
-            D = -(self.top + self.bottom) / (self.top - self.bottom)
-            E = 2 / (self.near - self.far)
-            F = (self.near + self.far) / (self.near - self.far)
+            A = 2 / rl_dist
+            B = -(self.right + self.left) / rl_dist
+            C = 2 / tb_dist
+            D = -(self.top + self.bottom) / tb_dist
+            E = 2 / -fn_dist
+            F = (self.near + self.far) / -fn_dist
 
             return [A,0,0,B,
                     0,C,0,D,
                     0,0,E,F,
                     0,0,0,1]
-
         else:
-            pass
-            # Set up a matrix for a Perspective projection
-            ###  Remember that it's a non-linear transformation   ###
-            ###  so the bottom row is different                   ###
+            p11 = 2*self.near / rl_dist
+            p13 = (self.right + self.left) / rl_dist
 
+            p22 = 2*self.near / tb_dist
+            p23 = (self.top + self.bottom) / tb_dist
 
+            p33 = (self.near + self.far) / (-fn_dist)
+            p34 = 2 * self.near * self.far / (-fn_dist)
 
-# The ProjectionViewMatrix returns a hardcoded matrix
-# that is just used to get something to send to the
-# shader before you properly implement the ViewMatrix
-# and ProjectionMatrix classes.
-# Feel free to throw it away afterwards!
+            return [p11,  0,  p13,  0,
+                    0,  p22,  p23,  0,
+                    0,    0,  p33,p34,
+                    0,    0,   -1,  0]
 
-class ProjectionViewMatrix:
-    def __init__(self):
-        pass
-
-    def get_matrix(self):
-        return [ 0.45052942369783683,  0.0,  -0.15017647456594563,  0.0,
-                -0.10435451285616304,  0.5217725642808152,  -0.3130635385684891,  0.0,
-                -0.2953940042189954,  -0.5907880084379908,  -0.8861820126569863,  3.082884480118567,
-                -0.2672612419124244,  -0.5345224838248488,  -0.8017837257372732,  3.7416573867739413 ]
-
-
-# IDEAS FOR OPERATIONS AND TESTING:
-# if __name__ == "__main__":
-#     matrix = ModelMatrix()
-#     matrix.push_matrix()
-#     print(matrix)
-#     matrix.add_translation(3, 1, 2)
-#     matrix.push_matrix()
-#     print(matrix)
-#     matrix.add_scale(2, 3, 4)
-#     print(matrix)
-#     matrix.pop_matrix()
-#     print(matrix)
-    
-#     matrix.add_translation(5, 5, 5)
-#     matrix.push_matrix()
-#     print(matrix)
-#     matrix.add_scale(3, 2, 3)
-#     print(matrix)
-#     matrix.pop_matrix()
-#     print(matrix)
-    
-#     matrix.pop_matrix()
-#     print(matrix)
-        
-#     matrix.push_matrix()
-#     matrix.add_scale(2, 2, 2)
-#     print(matrix)
-#     matrix.push_matrix()
-#     matrix.add_translation(3, 3, 3)
-#     print(matrix)
-#     matrix.push_matrix()
-#     matrix.add_rotation_y(pi / 3)
-#     print(matrix)
-#     matrix.push_matrix()
-#     matrix.add_translation(1, 1, 1)
-#     print(matrix)
-#     matrix.pop_matrix()
-#     print(matrix)
-#     matrix.pop_matrix()
-#     print(matrix)
-#     matrix.pop_matrix()
-#     print(matrix)
-#     matrix.pop_matrix()
-#     print(matrix)
-    

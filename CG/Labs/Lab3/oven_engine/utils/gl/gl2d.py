@@ -10,8 +10,8 @@ from pygame.color import Color
 from pygame.colordict import THECOLORS
 from pygame.font import SysFont, Font
 
-from .collisions import AABB
-from .geometry import *
+from oven_engine.utils.collisions import AABB
+from oven_engine.utils.geometry import *
 
 
 class LineMode(IntEnum):

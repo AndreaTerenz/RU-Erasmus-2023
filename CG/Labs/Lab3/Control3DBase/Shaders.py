@@ -1,13 +1,14 @@
+import os.path as path
+from abc import ABC, abstractmethod
 
 from OpenGL.GL import *
 from OpenGL.error import GLError
-import os.path as path
 
 DEFAULT_SHADER_DIR = path.join("Control3DBase", "Shader Files")
 DEFAULT_VERTEX = "simple3D.vert"
 DEFAULT_FRAG = "simple3D.frag"
 
-class Shader3D:
+class Shader3D(ABC):
     def __init__(self, vert_shader_path = None, frag_shader_path = None, shader_folder : str = None, halt_on_error = False):
         if vert_shader_path is None:
             vert_shader_path = DEFAULT_VERTEX
@@ -30,6 +31,23 @@ class Shader3D:
         glAttachShader(self.renderingProgramID, frag_shader)
         glLinkProgram(self.renderingProgramID)
 
+        self.modelMatrixLoc = self.get_uniform_loc(self.model_mat_name)
+        self.projectionMatrixLoc = self.get_uniform_loc(self.projection_mat_name)
+        self.viewMatrixLoc = self.get_uniform_loc(self.view_mat_name)
+
+    def get_projview(self, camera: 'Camera'):
+        self.set_projection_matrix(camera.projection_matrix.get_matrix())
+        self.set_view_matrix(camera.view_matrix.get_matrix())
+
+    def set_model_matrix(self, matrix_array):
+        glUniformMatrix4fv(self.modelMatrixLoc, 1, True, matrix_array)
+
+    def set_projection_matrix(self, matrix_array):
+        glUniformMatrix4fv(self.projectionMatrixLoc, 1, True, matrix_array)
+
+    def set_view_matrix(self, matrix_array):
+        glUniformMatrix4fv(self.viewMatrixLoc, 1, True, matrix_array)
+
     @staticmethod
     def get_shader(shader_file: str, shader_type: int, use_fallback = True, shader_folder: str = ""):
         if not shader_type in [GL_VERTEX_SHADER, GL_FRAGMENT_SHADER]:
@@ -38,8 +56,6 @@ class Shader3D:
         shader_id = glCreateShader(shader_type)
 
         shader_path = shader_file
-        print(type(shader_file))
-        print(type(shader_folder))
         if shader_folder != "":
             shader_path = path.join(shader_folder, shader_file)
 
@@ -83,12 +99,28 @@ class Shader3D:
 
     def use(self):
         try:
-            glUseProgram(self.renderingProgramID)   
+            glUseProgram(self.renderingProgramID)
         except OpenGL.error.GLError:
             print(glGetProgramInfoLog(self.renderingProgramID))
             raise
 
-class CubeShader(Shader3D):
+    @property
+    @abstractmethod
+    def model_mat_name(self):
+        return ""
+
+    @property
+    @abstractmethod
+    def projection_mat_name(self):
+        return ""
+
+    @property
+    @abstractmethod
+    def view_mat_name(self):
+        return ""
+
+class MeshShader(Shader3D):
+
     def __init__(self, halt_on_error = False):
         super().__init__("simple3D.vert", "simple3D.frag", halt_on_error=halt_on_error)
 
@@ -96,18 +128,6 @@ class CubeShader(Shader3D):
         self.normalLoc = self.enable_attrib_array("a_normal")
 
         self.colorLoc = self.get_uniform_loc("u_color")
-        self.modelMatrixLoc = self.get_uniform_loc("u_model_matrix")
-        self.projectionMatrixLoc = self.get_uniform_loc("u_projection_matrix")
-        self.viewMatrixLoc = self.get_uniform_loc("u_view_matrix")
-
-    def set_model_matrix(self, matrix_array):
-        glUniformMatrix4fv(self.modelMatrixLoc, 1, True, matrix_array)
-
-    def set_projection_matrix(self, matrix_array):
-        glUniformMatrix4fv(self.projectionMatrixLoc, 1, True, matrix_array)
-
-    def set_view_matrix(self, matrix_array):
-        glUniformMatrix4fv(self.viewMatrixLoc, 1, True, matrix_array)
 
     def set_position_attribute(self, vertex_array):
         glVertexAttribPointer(self.positionLoc, 3, GL_FLOAT, False, 0, vertex_array)
@@ -117,3 +137,15 @@ class CubeShader(Shader3D):
 
     def set_solid_color(self, r, g, b):
         glUniform4f(self.colorLoc, r, g, b, 1.)
+
+    @property
+    def model_mat_name(self):
+        return "u_model_matrix"
+
+    @property
+    def projection_mat_name(self):
+        return "u_projection_matrix"
+
+    @property
+    def view_mat_name(self):
+        return "u_view_matrix"

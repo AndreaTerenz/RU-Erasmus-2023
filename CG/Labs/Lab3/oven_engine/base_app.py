@@ -1,41 +1,13 @@
 # Assignment 2
-import os
 from bisect import insort
-from dataclasses import dataclass, field
+
+import OpenGL.GLU as glu
+from pygame.locals import *
 
 from .entities import Entity
 from .resources import TexturesManager
-
-os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "True"
-
-from pygame.locals import *
-
-from abc import ABC, abstractmethod
-
 from .utils.gl import *
-from .utils.collisions import AABB, CollisionManager
 
-import OpenGL.GLU as glu
-
-
-#TODO: Maybe use this at some point...
-@dataclass
-class Event:
-    class EventType(IntEnum):
-        KEY_PRESS = 0
-        KEY_RELEASE = 1
-        MOUSE = 2
-
-    name: str
-    type: EventType
-    key: int
-    listeners: set[Entity] = field(default_factory=set)
-
-    def __eq__(self, other: 'Event'):
-        return type(other) is Event and self.name == other.name
-
-    def add_listener(self, ent: Entity):
-        self.listeners.add(ent)
 
 class BaseApp(ABC):
     def __init__(self, 
@@ -44,7 +16,8 @@ class BaseApp(ABC):
                  clear_color = Color("black"),
                  scaling     = 1.,
                  target_fps  = 60.,
-                 enable_fps_print = False) -> None:
+                 enable_fps_print = False,
+                 camera_view_size : [float|Vector2D] = 8.) -> None:
         if target_fps <= 0.:
             target_fps = 60.
 
@@ -55,6 +28,12 @@ class BaseApp(ABC):
             scaling = Vector2D(scaling, scaling)
 
         self.win_size = win_size
+
+        if type(camera_view_size) is float:
+            camera_view_size = Vector2D(camera_view_size, camera_view_size / self.win_size.aspect_ratio)
+
+        #self.camera = Camera(self, eye=Vector3D(-3., 3., 3.), look_at=Vector3D.ZERO, view_size=camera_view_size, near=.5, far=100, ortho=False)
+
         self.scaling = scaling
         self.ortho_size = win_size * (scaling ** -1)
         self.clear_color = clear_color
@@ -73,7 +52,7 @@ class BaseApp(ABC):
         self.draw_order = []
         self.update_order = []
         self.events_order = []
-        self.cm = CollisionManager(world_bounds=self.aabb)
+        #self.cm = CollisionManager(world_bounds=self.aabb)
         self.tm = TexturesManager()
         self.last_delta = 0.
 
@@ -88,15 +67,12 @@ class BaseApp(ABC):
         glLoadIdentity()
         glMatrixMode(GL_MODELVIEW)
         glLoadIdentity()
-        # Sets up (in OGL) the orthographic viewing window size
-        # BASICALLY 2D coordinates can be on a different scale w.r.t.
-        # actual pixel coordinates
+
         glu.gluOrtho2D(0, self.ortho_size.x, 0, self.ortho_size.y)
-        # Sets up (in OGL) the actual size of the screen
         glViewport(0, 0, self.win_size.x, self.win_size.y)
 
     def __update(self):
-        self.cm.update_collisions()
+        #self.cm.update_collisions()
 
         self.update()
 
@@ -106,8 +82,10 @@ class BaseApp(ABC):
             e.update(self.last_delta)
 
     def __display(self):
+        glEnable(GL_DEPTH_TEST)
+
         if self.clear_on_draw:
-            glClear(GL_COLOR_BUFFER_BIT)
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
         self.display_back()
 
