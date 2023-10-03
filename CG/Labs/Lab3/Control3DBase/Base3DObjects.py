@@ -19,7 +19,7 @@ class Entity3D(ABC):
         self.model_matrix = ModelMatrix()
         self.shader = None
 
-    def __update_model_matrix(self):
+    def update_model_matrix(self):
         self.model_matrix.load_identity()
         self.model_matrix.add_translation(self.origin)
         self.model_matrix.add_rotation(self.rotation)
@@ -37,7 +37,7 @@ class Entity3D(ABC):
 
     def update(self, delta):
         self._update(delta)
-        self.__update_model_matrix()
+        self.update_model_matrix()
 
     @abstractmethod
     def _update(self, delta):

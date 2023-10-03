@@ -26,9 +26,6 @@ class GraphicsProgram3D:
         else:
             pg.display.set_mode(tuple(win_size), pg.OPENGL|pg.DOUBLEBUF)
             self.win_size = win_size
-
-        pg.mouse.set_visible(False)
-        pg.event.set_grab(True)
         pg.display.set_caption(win_title)
 
         ratio = self.win_size.aspect_ratio
@@ -102,7 +99,6 @@ class GraphicsProgram3D:
                 self.mouse_delta = Vector2D(event.rel) / self.win_size
                 self.mouse_delta = self.mouse_delta.snap(.005)
 
-            print(self.mouse_delta)
             self.camera.handle_event(event)
 
         return False

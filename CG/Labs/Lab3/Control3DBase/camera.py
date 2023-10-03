@@ -1,5 +1,6 @@
 import math
 
+import numpy as np
 import pygame as pg
 
 from Control3DBase.Base3DObjects import Entity3D
@@ -26,10 +27,30 @@ class Camera(Entity3D):
         self.target = target
         self.view_matrix.look_at(self.origin, target, up)
 
+        psi, phi, theta = self.get_rot_angles()
+        self.rotate(psi, Vector3D.UP)
+        self.rotate(phi, Vector3D.RIGHT)
+        self.rotate(theta, Vector3D.FORWARD)
+        self.update_model_matrix()
+
     def slide(self, offset):
-        self.origin += offset
+        self.translate(offset)
+        self.update_model_matrix()
+
         self.target += offset
         self.view_matrix.slide(*offset)
+
+    def get_rot_angles(self):
+        # Calculate the yaw (around global Z-axis) in radians
+        theta = np.arctan2(self.view_matrix.n.y, self.view_matrix.n.x)
+
+        # Calculate the pitch (around global Y-axis) in radians
+        phi = np.arctan2(-self.view_matrix.n.z, np.sqrt(self.view_matrix.n.x ** 2 + self.view_matrix.n.y ** 2))
+
+        # Calculate the roll (around global X-axis) in radians
+        psi = np.arctan2(self.view_matrix.u.z, self.view_matrix.v.z)
+
+        return psi, phi, theta
 
 class FreeLookCamera(Camera):
     def __init__(self, parent_app,
@@ -96,18 +117,30 @@ class FreeLookCamera(Camera):
             self.keys_states[event.key] = (event.type == pg.KEYDOWN)
 
 class FPCamera(Camera):
-    def __init__(self, parent_app, sensitivity = 50.,
+    KEYBOARD = 0
+    MOUSE = 1
+
+    def __init__(self, parent_app, sensitivity = 50., mode=MOUSE,
                  eye = Vector3D.ZERO, look_at = Vector3D.FORWARD, up_vec=Vector3D.UP,
                  fov =math.tau / 8., ratio =16. / 9., near=.5, far=100):
         super().__init__(parent_app, eye, look_at, up_vec, fov, ratio, near, far)
 
         self.sensitivity = sensitivity
+        self.mode = mode
+
+        # Unit vector pointing to look_at
+
+        if self.mode == FPCamera.MOUSE:
+            pg.mouse.set_visible(False)
+            pg.event.set_grab(True)
 
         h_dist = eye.distance_to(look_at)
+        h_dir = (eye - look_at).normalized
         v_dist = eye.y - look_at.y
         angle_to_target = math.atan2(v_dist, h_dist)
 
         self.head_pitch = angle_to_target
+        self.y_rot = math.atan2(h_dir.x, h_dir.z)
 
         self.slide_keys = {
             pg.K_w: Vector3D.FORWARD,
@@ -139,23 +172,53 @@ class FPCamera(Camera):
 
         slide_dir = slide_dir.normalized
         if slide_dir != Vector3D.ZERO:
-            h_dir = (self.view_matrix.eye - self.target).x0z.normalized
-            angle = math.atan2(h_dir.z, h_dir.x)
+            slide_dir = slide_dir.rotate(Vector3D.UP, self.y_rot)
 
-            offset = (slide_dir * delta * 2.)
-            offset = offset.rotate(Vector3D.UP, angle)
+            offset = (-slide_dir * delta * 4.)
 
             self.view_matrix.eye += offset
+            self.translate(offset)
+            self.update_model_matrix()
 
     def pitch(self, delta):
-        m_delta = self.parent_app.mouse_delta
-        if m_delta != Vector2D.ZERO:
-            self.view_matrix.rotate_x(m_delta.y * delta * self.sensitivity)
+        if self.mode == FPCamera.MOUSE:
+            m_delta = self.parent_app.mouse_delta
+            if m_delta != Vector2D.ZERO:
+                self.view_matrix.rotate_x(m_delta.y * delta * self.sensitivity)
+        elif self.mode == FPCamera.KEYBOARD:
+            _pitch = 0.
+            if self.keys_states[pg.K_i]:
+                _pitch = 1.
+            elif self.keys_states[pg.K_k]:
+                _pitch = -1.
+
+            if _pitch != 0.:
+                angle = math.tau / 10.
+                self.view_matrix.rotate_x(_pitch * angle * delta)
 
     def turn(self, delta):
-        m_delta = self.parent_app.mouse_delta
-        if m_delta != Vector2D.ZERO:
-            self.view_matrix.rotate_global_y(-m_delta.x * delta * self.sensitivity)
+        angle = 0.
+
+        if self.mode == FPCamera.MOUSE:
+            m_delta = self.parent_app.mouse_delta
+            if m_delta != Vector2D.ZERO:
+                angle = -m_delta.x * delta * self.sensitivity
+        elif self.mode == FPCamera.KEYBOARD:
+            _turn = 0.
+            if self.keys_states[pg.K_j]:
+                _turn = 1.
+            elif self.keys_states[pg.K_l]:
+                _turn = -1.
+
+            if _turn != 0.:
+                angle = _turn * delta * math.tau / 10.
+
+        if angle != 0.:
+            self.view_matrix.rotate_global_y(angle)
+            self.y_rot += angle
+
+            self.rotate(angle, Vector3D.UP)
+            self.update_model_matrix()
 
     def handle_event(self, event):
         if not (hasattr(event, 'key')):
