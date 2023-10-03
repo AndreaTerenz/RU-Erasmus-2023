@@ -2,13 +2,12 @@ import math
 from abc import abstractmethod, ABC
 
 from OpenGL.GL import *
-from pygame.locals import *
 
 # from Control3DBase.Geometry import Vector3D
-from Control3DBase.Matrices import ModelMatrix, ViewMatrix, ProjectionMatrix
+from Control3DBase.Matrices import ModelMatrix
 from Control3DBase.Shaders import MeshShader
-from oven_engine.utils.geometry import Vector3D
-from oven_engine.utils.gl.gl3d import CUBE_POSITION_ARRAY, CUBE_NORMAL_ARRAY, draw_cube
+from Control3DBase.utils.geometry import Vector3D
+from Control3DBase.utils.gl3d import CUBE_POSITION_ARRAY, CUBE_NORMAL_ARRAY, draw_cube
 
 
 class Entity3D(ABC):
@@ -27,7 +26,7 @@ class Entity3D(ABC):
         self.model_matrix.add_scale(self.scale)
 
         if self.shader is not None:
-            self.shader.set_model_matrix(self.model_matrix.matrix)
+            self.shader.set_model_matrix(self.model_matrix.values)
 
     @abstractmethod
     def draw(self):
@@ -67,85 +66,6 @@ class Entity3D(ABC):
     #TODO: Requires computing inverse of model matrix...
     """def to_local(self, global_pos: Vector3D):
         return self.model_matrix.inverse() * global_pos"""
-
-class Camera(Entity3D):
-    def __init__(self, parent_app, eye = Vector3D.ZERO, look_at = Vector3D.FORWARD, ratio = 16./9., near=.5, far=100, up_vec=Vector3D.UP):
-        super().__init__(parent_app, origin=eye, size=0., color=None, vertex_shader=None, frag_shader=None)
-
-        self.projection_matrix = ProjectionMatrix.perspective(math.tau / 8., ratio, near=near, far=far)
-        self.view_matrix = ViewMatrix()
-        self.target = Vector3D.ZERO
-
-        self.look_at(look_at, up_vec)
-
-        self.slide_keys = {
-            K_w: Vector3D.UP,
-            K_s: Vector3D.DOWN,
-            K_a: Vector3D.LEFT,
-            K_d: Vector3D.RIGHT,
-            K_q: Vector3D.FORWARD,
-            K_e: Vector3D.BACKWARD,
-        }
-
-        self.rotation_keys = {
-            K_UP: Vector3D.UP,
-            K_DOWN: Vector3D.DOWN,
-        }
-
-        self.keys = {key: False for key in list(self.slide_keys.keys()) + list(self.rotation_keys.keys())}
-
-    def draw(self):
-        pass
-
-    def _update(self, delta):
-        slide_dir = Vector3D.ZERO
-        for key, _dir in self.slide_keys.items():
-            state = self.keys[key]
-            fact = 1. if state else 0.
-            slide_dir += _dir * fact
-
-        slide_dir = slide_dir.normalized
-        if slide_dir != Vector3D.ZERO:
-            self.slide(slide_dir * delta * 5.)
-
-        target_slide_dir = Vector3D.ZERO
-        for key, _dir in self.rotation_keys.items():
-            state = self.keys[key]
-            fact = 1. if state else 0.
-            target_slide_dir += _dir * fact
-
-        target_slide_dir = target_slide_dir.normalized
-        if target_slide_dir != Vector3D.ZERO:
-            self.slide_target(target_slide_dir * delta * 5.)
-
-    def look_at(self, target, up=Vector3D.ZERO):
-        self.target = target
-        self.view_matrix.look_at(self.origin, target, up)
-
-    def slide(self, offset):
-        self.origin += offset
-        self.target += offset
-        self.view_matrix.slide(*offset)
-
-    def slide_target(self, offset, up_vec = Vector3D.UP):
-        self.look_at(self.target + offset, up_vec)
-
-    def handle_event(self, event):
-        if not (hasattr(event, 'key')):
-            return
-
-        if event.key in self.keys.keys():
-            self.keys[event.key] = (event.type == KEYDOWN)
-
-        """if event.key == K_UP:
-            self.view_matrix.rotate_x(-math.tau/10.)
-        elif event.key == K_DOWN:
-            self.view_matrix.rotate_x(math.tau/10.)
-
-        if event.key == K_LEFT:
-            self.view_matrix.rotate_y(-math.tau/10.)
-        elif event.key == K_RIGHT:
-            self.view_matrix.rotate_y(math.tau/10.)"""
 
 
 class Cube(Entity3D, ABC):

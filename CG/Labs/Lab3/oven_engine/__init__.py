@@ -1,1 +1,0 @@
-print("Starting OvEn Engine (version 2.0.1-lab3)...")

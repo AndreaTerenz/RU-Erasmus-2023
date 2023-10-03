@@ -2,6 +2,8 @@ import math
 from abc import ABC, abstractmethod
 from typing import Self
 
+import numpy as np
+
 
 class classproperty(property):
     def __get__(self, cls, owner):
@@ -22,19 +24,19 @@ class AbstractVector(ABC):
         if type(other) != type(self):
             return False
 
-        return all([a == b for a, b in zip(self.components, other.components)])
+        return all([c1 == c2 for c1, c2 in zip(self.components, other.components)])
 
     def __gt__(self, other):
         if type(other) != type(self):
             return False
 
-        return all([a > b for a, b in zip(self.components, other.components)])
+        return all([c1 > c2 for c1, c2 in zip(self.components, other.components)])
 
     def __lt__(self, other):
         if type(other) != type(self):
             return False
 
-        return all([a < b for a, b in zip(self.components, other.components)])
+        return all([c1 < c2 for c1, c2 in zip(self.components, other.components)])
 
     def __str__(self) -> str:
         return f"({', '.join([str(c) for c in self.components])})"
@@ -67,7 +69,7 @@ class AbstractVector(ABC):
             other = self.from_values([other for _ in range(self.components_count)])
 
         if type(other) == type(self):
-            return self.from_values([a + b for a, b in zip(self.components, other.components)])
+            return self.from_values([c1 + c2 for c1, c2 in zip(self.components, other.components)])
 
         return self
 
@@ -79,7 +81,7 @@ class AbstractVector(ABC):
             other = self.from_values([other for _ in range(self.components_count)])
 
         if type(other) == type(self):
-            return self.from_values([a * b for a, b in zip(self.components, other.components)])
+            return self.from_values([c1 * c2 for c1, c2 in zip(self.components, other.components)])
 
         return self
 
@@ -91,7 +93,7 @@ class AbstractVector(ABC):
             other = self.from_values([other for _ in range(self.components_count)])
 
         if type(other) is Vector2D:
-            return self.from_values([a / b for a, b in zip(self.components, other.components)])
+            return self.from_values([c1 / c2 for c1, c2 in zip(self.components, other.components)])
 
         return self
 
@@ -111,8 +113,8 @@ class AbstractVector(ABC):
         return self.map(round, n)
 
     def snap(self, step: float):
-        def s(v, st):
-            return round(v/st)*st
+        def s(val, st):
+            return round(val/st)*st
 
         return self.map(s, step)
 
@@ -142,20 +144,17 @@ class AbstractVector(ABC):
 
     def clamped(self, min_value, max_value):
         if type(min_value) in [int, float]:
-            min_value = Vector2D(min_value, min_value)
+            min_value = self.from_values([min_value] * self.components_count)
         if type(max_value) in [int, float]:
-            max_value = Vector2D(max_value, max_value)
+            max_value = self.from_values([max_value] * self.components_count)
 
-        x = min(max_value.x, max(min_value.x, self.x))
-        y = min(max_value.y, max(min_value.y, self.y))
-
-        return Vector2D(x, y)
+        return self.from_values([min(max_value[i], max(min_value[i], self.components[i])) for i in range(self.components_count)])
 
     def is_longer_than(self, other):
         return self.length_sq > other.length_sq
 
     def dot(self, other):
-        return sum([a * b for a, b in zip(self.components, other.components)])
+        return sum([c1 * c2 for c1, c2 in zip(self.components, other.components)])
 
     def distance_sq_to(self, other: Self):
         return (self - other).length_sq
@@ -177,6 +176,14 @@ class AbstractVector(ABC):
 
         return self - 2 * self.dot(normal_vec) * normal_vec
 
+    def angle_with(self, other):
+        cos_angle = self.dot(other) / (self.length * other.length)
+
+        return math.acos(cos_angle)
+
+    def to_homogenous(self):
+        return self.components + [1.]
+
     @staticmethod
     @abstractmethod
     def from_values(values : list) -> Self:
@@ -188,11 +195,11 @@ class AbstractVector(ABC):
 
 class Vector2D(AbstractVector):
 
-    def __init__(self, x: [tuple|float], y : [float|None] = None):
+    def __init__(self, x: [tuple|list|float], y : [float|None] = None):
         if y is None:
             y = x
         
-        if type(x) is tuple and len(x) >= 2:
+        if type(x) in [tuple,list] and len(x) >= 2:
             self.x, self.y = x[0], x[1]
         else:
             self.x, self.y = x, y
@@ -272,11 +279,6 @@ class Vector2D(AbstractVector):
         """
 
         return self.x * other.y - self.y * other.x
-    
-    def angle_with(self, other):
-        cos_angle = self.dot(other) / (self.length * other.length)
-
-        return math.acos(cos_angle)
 
     def rotated(self, angle):
         angle = math.fmod(angle, math.tau)
@@ -322,13 +324,13 @@ class Vector2D(AbstractVector):
 
 class Vector3D(AbstractVector):
 
-    def __init__(self, x: [tuple|float], y : [float|None] = None, z : [float|None] = None):
+    def __init__(self, x: [tuple|list|float], y : [float|None] = None, z : [float|None] = None):
         if y is None:
             y = x
         if z is None:
             z = x
 
-        if type(x) is tuple and len(x) >= 3:
+        if type(x) in [tuple,list] and len(x) >= 3:
             self.x, self.y, self.z = x[0], x[1], x[2]
         else:
             self.x, self.y, self.z = x, y, z
@@ -419,6 +421,13 @@ class Vector3D(AbstractVector):
 
         return theta, r, h
 
+    def rotate(self, axis, angle):
+        axis = axis.normalized
+        cos_angle = math.cos(angle)
+        sin_angle = math.sin(angle)
+
+        return self * cos_angle + axis.cross(self) * sin_angle + axis * axis.dot(self) * (1. - cos_angle)
+
     def cross(self, other):
         return Vector3D(
             self.y * other.z - self.z * other.y,
@@ -433,12 +442,17 @@ class Vector3D(AbstractVector):
         plane_normal = plane_normal.normalized
         return self - self.dot(plane_normal) * plane_normal
 
-    def rotate(self, angle, axis):
-        axis = axis.normalized
-        cos_angle = math.cos(angle)
-        sin_angle = math.sin(angle)
+    def rotate_with_matrix(self, rot_matrix):
+        # Define the local coordinate axes (u, v, n)
+        homogenous = np.append(np.array(list(self)), 1.)
 
-        return self * cos_angle + axis.cross(self) * sin_angle + axis * axis.dot(self) * (1. - cos_angle)
+        # Rotate the local coordinate axes
+        rotated = np.dot(rot_matrix, homogenous)
+
+        # Convert back to 3x1 vectors by dividing by the fourth component
+        rotated = rotated[:3] / rotated[3]
+
+        return Vector3D(*rotated)
 
 
 if __name__ == '__main__':

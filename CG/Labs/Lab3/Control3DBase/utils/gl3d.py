@@ -3,7 +3,7 @@ from OpenGL.GL import *
 
 from Control3DBase.Matrices import ModelMatrix
 from Control3DBase.Shaders import MeshShader
-from oven_engine.utils.geometry import Vector3D
+from Control3DBase.utils.geometry import Vector3D
 
 CUBE_POSITION_ARRAY = np.array(
         [-1, -1, -1,
@@ -48,7 +48,7 @@ def draw_cube(camera, offset: Vector3D = Vector3D.ZERO, color = None, rotation: 
         shader.set_normal_attribute(CUBE_NORMAL_ARRAY)
 
     shader.use()
-    shader.set_model_matrix(model_matrix.matrix)
+    shader.set_model_matrix(model_matrix.values)
     shader.get_projview(camera)
 
     if color is not None:

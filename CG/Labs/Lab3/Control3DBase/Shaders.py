@@ -36,8 +36,8 @@ class Shader3D(ABC):
         self.viewMatrixLoc = self.get_uniform_loc(self.view_mat_name)
 
     def get_projview(self, camera: 'Camera'):
-        self.set_projection_matrix(camera.projection_matrix.get_matrix())
-        self.set_view_matrix(camera.view_matrix.get_matrix())
+        self.set_projection_matrix(camera.projection_matrix.values)
+        self.set_view_matrix(camera.view_matrix.values)
 
     def set_model_matrix(self, matrix_array):
         glUniformMatrix4fv(self.modelMatrixLoc, 1, True, matrix_array)

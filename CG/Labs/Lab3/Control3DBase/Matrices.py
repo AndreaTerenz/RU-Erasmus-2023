@@ -3,7 +3,7 @@ from abc import ABC
 
 import numpy as np
 
-from oven_engine.utils.geometry import Vector3D
+from Control3DBase.utils.geometry import Vector3D
 
 
 def set_values_in_matrix(matrix, idx_val_zip):
@@ -14,31 +14,15 @@ def set_values_in_matrix(matrix, idx_val_zip):
 
 class Matrix(ABC):
     def __init__(self, rows = 4, cols = 4):
-        self.matrix = np.eye(rows, cols).flatten()
+        self._matrix = np.eye(rows, cols).flatten()
         self.rows = rows
         self.cols = cols
 
     def load_identity(self):
-        self.matrix = np.eye(self.rows, self.cols).flatten()
+        self._matrix = np.eye(self.rows, self.cols).flatten()
 
     def copy_matrix(self):
-        return np.copy(self.matrix)
-
-    def add_transformation(self, other):
-        counter = 0
-        new_matrix = np.zeros(16)
-        for row in range(4):
-            for col in range(4):
-                for i in range(4):
-                    new_matrix[counter] += self.matrix[row*4 + i]*other[col + 4*i]
-                counter += 1
-        self.matrix = new_matrix
-
-        #self.matrix = self.matrix @ other
-
-    def add_nothing(self):
-        other_matrix = np.eye(4).flatten()
-        self.add_transformation(other_matrix)
+        return np.copy(self._matrix)
 
     def __str__(self):
         ret_str = ""
@@ -46,10 +30,18 @@ class Matrix(ABC):
         for _ in range(4):
             ret_str += "["
             for _ in range(4):
-                ret_str += " " + str(self.matrix[counter]) + " "
+                ret_str += " " + str(self._matrix[counter]) + " "
                 counter += 1
             ret_str += "]\n"
         return ret_str
+
+    def add_transformation(self, other):
+        other = np.array(other).reshape(4, 4)
+        self._matrix = (self._matrix.reshape(4,4) @ other).flatten()
+
+    @property
+    def values(self):
+        return self._matrix
 
 class ModelMatrix(Matrix):
     def __init__(self):
@@ -72,8 +64,6 @@ class ModelMatrix(Matrix):
 
         return matrix
 
-    ## MAKE OPERATIONS TO ADD TRANLATIONS, SCALES AND ROTATIONS ##
-    # ---
     def add_translation(self, x : [float|Vector3D], y = None, z = None):
         if type(x) is Vector3D:
             offset = x
@@ -119,23 +109,22 @@ class ModelMatrix(Matrix):
         self.stack.append(self.copy_matrix().tolist())
 
     def pop_matrix(self):
-        self.matrix = self.stack.pop()
-
+        self._matrix = self.stack.pop()
 
 
 # The ViewMatrix class holds the camera's coordinate frame and
 # set's up a transformation concerning the camera's position
 # and orientation
 
-class ViewMatrix:
+class ViewMatrix(Matrix):
     def __init__(self):
+        super().__init__(4, 4)
+
         self.eye = Vector3D(0,0,0)
         self.u = Vector3D(1, 0, 0)
         self.v = Vector3D(0, 1, 0)
         self.n = Vector3D(0, 0, 1)
 
-    ## MAKE OPERATIONS TO ADD LOOK, SLIDE, PITCH, YAW and ROLL ##
-    # ---
     def look_at(self, eye, target, up_vector = Vector3D.UP):
         self.eye = eye
         self.n = (eye - target).normalized
@@ -166,6 +155,62 @@ class ViewMatrix:
         """
         self.u, self.v = ViewMatrix.__rotate_axes(self.u, self.v, angle)
 
+    def rotate_global_x(self, angle):
+        c = np.cos(angle)
+        s = np.sin(angle)
+
+        # Create the rotation matrix around the global y-axis
+        R_x = np.array([
+            [1, 0, 0, 0],
+            [0, c, -s, 0],
+            [0, s, c, 0],
+            [0, 0, 0, 1]
+        ], dtype=np.float32)
+
+        self.rotate_with_matrix(R_x)
+
+    def rotate_global_y(self, angle):
+        c = np.cos(angle)
+        s = np.sin(angle)
+
+        # Create the rotation matrix around the global y-axis
+        R_y = np.array([
+            [c, 0, s, 0],
+            [0, 1, 0, 0],
+            [-s, 0, c, 0],
+            [0, 0, 0, 1]
+        ], dtype=np.float32)
+
+        self.rotate_with_matrix(R_y)
+
+    def rotate_global_z(self, angle):
+        c = np.cos(angle)
+        s = np.sin(angle)
+
+        # Create the rotation matrix around the global y-axis
+        R_z = np.array([
+            [c, -s, 0, 0],
+            [s, c, 0, 0],
+            [0, 0, 1, 0],
+            [0, 0, 0, 1]
+        ], dtype=np.float32)
+
+        self.rotate_with_matrix(R_z)
+
+    def rotate_with_matrix(self, rot_matrix):
+        self.u = self.u.rotate_with_matrix(rot_matrix)
+        self.v = self.v.rotate_with_matrix(rot_matrix)
+        self.n = self.n.rotate_with_matrix(rot_matrix)
+
+    def get_axis_from_matrix(self):
+        """
+        Extract the values for each axis vector from the matrix
+        """
+
+        return Vector3D(self._matrix[0], self._matrix[1], self._matrix[2]), \
+                Vector3D(self._matrix[4], self._matrix[5], self._matrix[6]), \
+                Vector3D(self._matrix[8], self._matrix[9], self._matrix[10])
+
     @staticmethod
     def __rotate_axes(a, b, angle):
         c = np.cos(angle)
@@ -177,34 +222,37 @@ class ViewMatrix:
 
         return a, b
 
-    def get_matrix(self):
+    @property
+    def values(self):
         minusEye = -self.eye
         return [self.u.x, self.u.y, self.u.z, minusEye.dot(self.u),
                 self.v.x, self.v.y, self.v.z, minusEye.dot(self.v),
                 self.n.x, self.n.y, self.n.z, minusEye.dot(self.n),
                 0,        0,        0,        1]
 
-
-# The ProjectionMatrix class builds transformations concerning
-# the camera's "lens"
-
-class ProjectionMatrix:
+class ProjectionMatrix(Matrix):
     def __init__(self):
+        super().__init__(4, 4)
+
         self.left = 0.
         self.right = 0.
         self.bottom = 0.
         self.top = 0.
         self.near = 0.
         self.far = 0.
+        self.fov = 0.
+        self.aspect_ratio = 0.
 
         self.is_orthographic = False
 
-    ## MAKE OPERATION TO SET PERSPECTIVE PROJECTION (don't forget to set is_orthographic to False) ##
-    # ---
     @staticmethod
     def perspective(fov: float, aspect_ratio: float, near: float, far: float):
+        near, far = min(near, far), max(near, far)
+        fov = math.fmod(fov, math.tau)
+
         output = ProjectionMatrix()
 
+        output.fov = fov
         output.near = near
         output.far = far
 
@@ -227,6 +275,7 @@ class ProjectionMatrix:
         hh = height / 2.
 
         output = ProjectionMatrix()
+        output.aspect_ratio = hw/hh
         output.left = -hw
         output.right = hw
         output.bottom = -hh
@@ -237,7 +286,8 @@ class ProjectionMatrix:
 
         return output
 
-    def get_matrix(self):
+    @property
+    def values(self):
         rl_dist = self.right - self.left
         tb_dist = self.top - self.bottom
         fn_dist = self.far - self.near

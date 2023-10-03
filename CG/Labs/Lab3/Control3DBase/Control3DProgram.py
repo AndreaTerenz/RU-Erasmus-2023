@@ -1,9 +1,9 @@
-import pygame as pg
 from pygame.locals import *
 
-from Control3DBase.Base3DObjects import Cube1, Cube2, Cube3, Camera
+from Control3DBase.Base3DObjects import Cube1, Cube2, Cube3
 from Control3DBase.Shaders import *
-from oven_engine.utils.geometry import Vector3D, Vector2D
+from Control3DBase.camera import *
+from Control3DBase.utils.geometry import Vector3D, Vector2D
 
 
 # from OpenGL.GL import *
@@ -15,6 +15,7 @@ class GraphicsProgram3D:
                  win_title   = "BaseApp",
                  win_size    = Vector2D(720,720),
                  clear_color = Color("black"),
+                 fov         = math.tau/8.,
                  fullscreen = True):
 
         pg.init()
@@ -30,7 +31,7 @@ class GraphicsProgram3D:
 
         ratio = self.win_size.aspect_ratio
 
-        self.camera = Camera(self, eye=Vector3D(-8., 8., 8.) * 3., look_at=Vector3D.ZERO, ratio=ratio, near=.5, far=100)
+        self.camera = FPCamera(self, eye=Vector3D(-1., 1., 1.) * 3., look_at=Vector3D.ZERO, ratio=ratio, fov=fov, near=.5, far=100)
 
         self.cubes = [
             Cube1(self, size=0.4),
