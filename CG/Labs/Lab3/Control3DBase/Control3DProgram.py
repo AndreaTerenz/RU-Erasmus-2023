@@ -66,8 +66,8 @@ class GraphicsProgram3D:
 
         glViewport(0, 0, self.win_size.x, self.win_size.y)
 
-        #draw_plane(self.camera, offset=Vector3D.UP * 4., color=(0.5, 0.5, 0.5), scale=Vector3D(10, 0, 10))
-        for cube in self.cubes:
+        #draw_plane(self.camera, offset=Vector3D.DOWN * 4., color=(0.5, 0.5, 0.5), scale=Vector3D(10, 0, 10))
+        for cube in self.cubes[:1]:
             cube.shader.get_projview(self.camera)
             cube.draw()
 

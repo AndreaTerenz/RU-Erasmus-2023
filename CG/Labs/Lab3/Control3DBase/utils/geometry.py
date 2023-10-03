@@ -169,6 +169,9 @@ class AbstractVector(ABC):
 
     def distance_to(self, other: Self):
         return math.sqrt(self.distance_sq_to(other))
+    
+    def direction_to(self, other: Self):
+        return (other - self).normalized
 
     def lin_interpolate(self, target: Self, weight: float):
         weight = min(1., max(0., weight))

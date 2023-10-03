@@ -128,18 +128,16 @@ class FPCamera(Camera):
         self.sensitivity = sensitivity
         self.mode = mode
 
-        # Unit vector pointing to look_at
-
         if self.mode == FPCamera.MOUSE:
             pg.mouse.set_visible(False)
             pg.event.set_grab(True)
 
         h_dist = eye.distance_to(look_at)
-        h_dir = (eye - look_at).normalized
         v_dist = eye.y - look_at.y
         angle_to_target = math.atan2(v_dist, h_dist)
-
         self.head_pitch = angle_to_target
+        
+        h_dir = eye.direction_to(look_at)
         self.y_rot = math.atan2(h_dir.x, h_dir.z)
 
         self.slide_keys = {
@@ -174,11 +172,9 @@ class FPCamera(Camera):
         if slide_dir != Vector3D.ZERO:
             slide_dir = slide_dir.rotate(Vector3D.UP, self.y_rot)
 
-            offset = (-slide_dir * delta * 4.)
+            offset = (slide_dir * delta * 4.)
 
             self.view_matrix.eye += offset
-            self.translate(offset)
-            self.update_model_matrix()
 
     def pitch(self, delta):
         if self.mode == FPCamera.MOUSE:
@@ -216,9 +212,6 @@ class FPCamera(Camera):
         if angle != 0.:
             self.view_matrix.rotate_global_y(angle)
             self.y_rot += angle
-
-            self.rotate(angle, Vector3D.UP)
-            self.update_model_matrix()
 
     def handle_event(self, event):
         if not (hasattr(event, 'key')):
