@@ -4,7 +4,7 @@ import pygame as pg
 
 from Control3DBase.Base3DObjects import Entity3D
 from Control3DBase.Matrices import ProjectionMatrix, ViewMatrix
-from Control3DBase.utils.geometry import Vector3D
+from Control3DBase.utils.geometry import Vector3D, Vector2D
 
 
 class Camera(Entity3D):
@@ -18,6 +18,24 @@ class Camera(Entity3D):
         self.target = Vector3D.ZERO
 
         self.look_at(look_at, up_vec)
+
+    def draw(self):
+        pass
+
+    def look_at(self, target, up=Vector3D.UP):
+        self.target = target
+        self.view_matrix.look_at(self.origin, target, up)
+
+    def slide(self, offset):
+        self.origin += offset
+        self.target += offset
+        self.view_matrix.slide(*offset)
+
+class FreeLookCamera(Camera):
+    def __init__(self, parent_app,
+                 eye = Vector3D.ZERO, look_at = Vector3D.FORWARD, up_vec=Vector3D.UP,
+                 fov =math.tau / 8., ratio =16. / 9., near=.5, far=100):
+        super().__init__(parent_app, eye, look_at, up_vec, fov, ratio, near, far)
 
         self.slide_keys = {
             pg.K_w: Vector3D.UP,
@@ -37,19 +55,6 @@ class Camera(Entity3D):
                             list(self.slide_keys.keys()) +
                             self.rotation_keys}
 
-    def draw(self):
-        pass
-
-    def look_at(self, target, up=Vector3D.ZERO):
-        self.target = target
-        self.view_matrix.look_at(self.origin, target, up)
-
-    def slide(self, offset):
-        self.origin += offset
-        self.target += offset
-        self.view_matrix.slide(*offset)
-
-class FreeLookCamera(Camera):
     def _update(self, delta):
         slide_dir = Vector3D.ZERO
         for key, _dir in self.slide_keys.items():
@@ -91,26 +96,66 @@ class FreeLookCamera(Camera):
             self.keys_states[event.key] = (event.type == pg.KEYDOWN)
 
 class FPCamera(Camera):
+    def __init__(self, parent_app, sensitivity = 50.,
+                 eye = Vector3D.ZERO, look_at = Vector3D.FORWARD, up_vec=Vector3D.UP,
+                 fov =math.tau / 8., ratio =16. / 9., near=.5, far=100):
+        super().__init__(parent_app, eye, look_at, up_vec, fov, ratio, near, far)
+
+        self.sensitivity = sensitivity
+
+        h_dist = eye.distance_to(look_at)
+        v_dist = eye.y - look_at.y
+        angle_to_target = math.atan2(v_dist, h_dist)
+
+        self.head_pitch = angle_to_target
+
+        self.slide_keys = {
+            pg.K_w: Vector3D.FORWARD,
+            pg.K_s: Vector3D.BACKWARD,
+            pg.K_a: Vector3D.RIGHT,
+            pg.K_d: Vector3D.LEFT,
+        }
+
+        self.rotation_keys = [
+            # Pitch          # Turn
+            pg.K_i, pg.K_k, pg.K_j, pg.K_l
+        ]
+
+        self.keys_states = {key: False for key in
+                            list(self.slide_keys.keys()) +
+                            self.rotation_keys}
+
     def _update(self, delta):
-        pitch = 0.
-        if self.keys_states[pg.K_i]:
-            pitch = 1.
-        elif self.keys_states[pg.K_k]:
-            pitch = -1.
+        self.pitch(delta)
+        self.turn(delta)
+        self.move(delta)
 
-        if pitch != 0.:
-            angle = math.tau / 10.
-            self.view_matrix.rotate_x(pitch * angle * delta)
+    def move(self, delta):
+        slide_dir = Vector3D.ZERO
+        for key, _dir in self.slide_keys.items():
+            state = self.keys_states[key]
+            fact = 1. if state else 0.
+            slide_dir += _dir * fact
 
-        turn = 0.
-        if self.keys_states[pg.K_j]:
-            turn = 1.
-        elif self.keys_states[pg.K_l]:
-            turn = -1.
+        slide_dir = slide_dir.normalized
+        if slide_dir != Vector3D.ZERO:
+            h_dir = (self.view_matrix.eye - self.target).x0z.normalized
+            angle = math.atan2(h_dir.z, h_dir.x)
 
-        if turn != 0.:
-            angle = math.tau / 10.
-            self.view_matrix.rotate_global_y(turn * angle * delta)
+            offset = (slide_dir * delta * 2.)
+            offset = offset.rotate(Vector3D.UP, angle)
+
+            self.view_matrix.eye += offset
+
+    def pitch(self, delta):
+        m_delta = self.parent_app.mouse_delta
+        if m_delta != Vector2D.ZERO:
+            self.view_matrix.rotate_x(m_delta.y * delta * self.sensitivity)
+
+    def turn(self, delta):
+        m_delta = self.parent_app.mouse_delta
+        if m_delta != Vector2D.ZERO:
+            self.view_matrix.rotate_global_y(-m_delta.x * delta * self.sensitivity)
 
     def handle_event(self, event):
         if not (hasattr(event, 'key')):

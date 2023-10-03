@@ -134,10 +134,18 @@ class AbstractVector(ABC):
 
         return self * (target_len / l)
 
-    def clamp_length(self, target_len):
+    def set_max_length(self, target_len):
         l = self.length_sq
 
         if l <= target_len ** 2:
+            return self
+
+        return self.scale_to_length(target_len)
+
+    def set_min_length(self, target_len):
+        l = self.length_sq
+
+        if l >= target_len ** 2:
             return self
 
         return self.scale_to_length(target_len)
@@ -338,15 +346,19 @@ class Vector3D(AbstractVector):
         super().__init__([self.x, self.y, self.z])
 
     def __getattribute__(self, item: str):
-        if len(item) == 2:
+        if len(item) in [2,3]:
             comps = {
                 "x": self.x,
                 "y": self.y,
-                "z": self.z
+                "z": self.z,
+                "0": 0.,
             }
 
-            if item[0] in comps and item[1] in comps:
-                return Vector2D(comps[item[0]], comps[item[1]])
+            if all(item[i] in comps for i in range(len(item))):
+                if len(item) == 2:
+                    return Vector2D(comps[item[0]], comps[item[1]])
+                elif len(item) == 3:
+                    return Vector3D(comps[item[0]], comps[item[1]], comps[item[2]])
 
         return super().__getattribute__(item)
 
@@ -473,7 +485,8 @@ if __name__ == '__main__':
     print(a+b)
     print(a.xy)
     print(b.zy)
+    print(a.x0z)
 
-    u, v, _ = a.rotate(math.tau/4., b)
+    u, v, _ = a.rotate(b, math.tau/4.)
     print(u)
     print(v)

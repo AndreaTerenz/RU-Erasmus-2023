@@ -27,11 +27,13 @@ class GraphicsProgram3D:
             pg.display.set_mode(tuple(win_size), pg.OPENGL|pg.DOUBLEBUF)
             self.win_size = win_size
 
+        pg.mouse.set_visible(False)
+        pg.event.set_grab(True)
         pg.display.set_caption(win_title)
 
         ratio = self.win_size.aspect_ratio
 
-        self.camera = FPCamera(self, eye=Vector3D(-1., 1., 1.) * 3., look_at=Vector3D.ZERO, ratio=ratio, fov=fov, near=.5, far=100)
+        self.camera = FPCamera(self, eye=Vector3D(-2., 1., 2.) * 5., look_at=Vector3D.ZERO, ratio=ratio, fov=fov, near=.5, far=100)
 
         self.cubes = [
             Cube1(self, size=0.4),
@@ -44,6 +46,8 @@ class GraphicsProgram3D:
         self.clear_color = clear_color
         self.white_background = False
         self.ticks = 0
+
+        self.mouse_delta = Vector2D.ZERO
 
     def update(self):
         delta_time = self.clock.tick(60.) / 1000.0
@@ -86,6 +90,7 @@ class GraphicsProgram3D:
 
     def handle_events(self):
         for event in pg.event.get():
+            self.mouse_delta *= 0.
             if event.type == pg.QUIT:
                 print("Quitting!")
                 return True
@@ -93,13 +98,20 @@ class GraphicsProgram3D:
                 if event.key == K_ESCAPE:
                     print("Escaping!")
                     return True
+            elif event.type == pg.MOUSEMOTION:
+                self.mouse_delta = Vector2D(event.rel) / self.win_size
+                self.mouse_delta = self.mouse_delta.snap(.005)
 
+            print(self.mouse_delta)
             self.camera.handle_event(event)
 
         return False
     
     def start(self):
         self.program_loop()
+
+    def get_mouse_pos(self):
+        return Vector2D(pg.mouse.get_pos()) / self.win_size - Vector2D(0.5, 0.5)
 
 if __name__ == "__main__":
     GraphicsProgram3D().start()
