@@ -20,7 +20,7 @@ class GraphicsProgram3D:
                  clear_color = Color("black"),
                  fov         = math.tau/8.,
                  fullscreen  = True,
-                 ambient_color = Color("white")):
+                 ambient_color = Color("red")):
 
         pg.init()
 
@@ -34,7 +34,7 @@ class GraphicsProgram3D:
 
         ratio = self.win_size.aspect_ratio
 
-        self.ambient_color = (1., 1., 1.)#np.array(ambient_color[:3]) / 255.
+        self.ambient_color = ambient_color
 
         self.camera = FPCamera(self, eye=Vector3D(-2., 1., 2.) * 5., look_at=Vector3D.ZERO, ratio=ratio, fov=fov, near=.5, far=100)
         self.light = Light(Vector3D(0., 0., 0.), (1., 1., 1.))
@@ -54,7 +54,7 @@ class GraphicsProgram3D:
         ]
 
         self.objects[-1].scale_by(.1)
-        self.objects[-1].shader.use()
+        self.objects[-1].shader.set_material_diffuse(self.light.color)
         self.objects[-1].shader.set_unshaded(True)
         self.objects[-1].translate_to(self.light.position)
 
@@ -90,7 +90,7 @@ class GraphicsProgram3D:
             light_dir += _dir * fact
 
         if light_dir != Vector3D.ZERO:
-            self.light.position += light_dir * delta_time * 4.
+            self.light.position += light_dir.normalized * delta_time * 4.
             self.objects[-1].translate_to(self.light.position)
 
         for obj in self.objects:
@@ -107,6 +107,8 @@ class GraphicsProgram3D:
         glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT)  ### --- YOU CAN ALSO CLEAR ONLY THE COLOR OR ONLY THE DEPTH --- ###
 
         glViewport(0, 0, self.win_size.x, self.win_size.y)
+
+        draw_plane(self.camera, self.light, self.ground_shader, self.ambient_color, offset=Vector3D.DOWN * 4., scale=Vector3D(10., 1., 10.))
 
         for obj in self.objects:
             obj.draw()

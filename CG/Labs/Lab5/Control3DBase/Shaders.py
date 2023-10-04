@@ -3,7 +3,9 @@ from abc import ABC, abstractmethod
 
 from OpenGL.GL import *
 from OpenGL.error import GLError
+from pygame import Color
 
+from Control3DBase.light import Light
 from Control3DBase.utils.geometry import Vector3D
 
 DEFAULT_SHADER_DIR = path.join("Control3DBase", "Shader Files")
@@ -22,33 +24,21 @@ class Shader3D(ABC):
         print("Compiling shaders...")
         vert_shader = Shader3D.get_shader(vert_shader_path, GL_VERTEX_SHADER, shader_folder=shader_folder)
         assert vert_shader != -1 or not halt_on_error, f"Couldn't load vertex shader '{vert_shader_path}'"
-        print("\tVertex shader ok")
+        print(f"\tVertex shader {'ok' if vert_shader != -1 else 'failed'}")
 
         frag_shader = Shader3D.get_shader(frag_shader_path, GL_FRAGMENT_SHADER, shader_folder=shader_folder)
         assert frag_shader != -1 or not halt_on_error, f"Couldn't load fragment shader '{frag_shader_path}'"
-        print("\tFragment shader ok")
+        print(f"\tFragment shader {'ok' if frag_shader != -1 else 'failed'}")
 
         self.renderingProgramID = glCreateProgram()
+
+        assert self.renderingProgramID != 0, print("Couldn't create program")
+
         glAttachShader(self.renderingProgramID, vert_shader)
         glAttachShader(self.renderingProgramID, frag_shader)
         glLinkProgram(self.renderingProgramID)
 
-        self.modelMatrixLoc = self.get_uniform_loc(self.model_mat_name)
-        self.projectionMatrixLoc = self.get_uniform_loc(self.projection_mat_name)
-        self.viewMatrixLoc = self.get_uniform_loc(self.view_mat_name)
-
-    def get_projview(self, camera: 'Camera'):
-        self.set_projection_matrix(camera.projection_matrix.values)
-        self.set_view_matrix(camera.view_matrix.values)
-
-    def set_model_matrix(self, matrix_array):
-        glUniformMatrix4fv(self.modelMatrixLoc, 1, True, matrix_array)
-
-    def set_projection_matrix(self, matrix_array):
-        glUniformMatrix4fv(self.projectionMatrixLoc, 1, True, matrix_array)
-
-    def set_view_matrix(self, matrix_array):
-        glUniformMatrix4fv(self.viewMatrixLoc, 1, True, matrix_array)
+        self.uniform_locations = {}
 
     @staticmethod
     def get_shader(shader_file: str, shader_type: int, use_fallback = True, shader_folder: str = ""):
@@ -56,6 +46,10 @@ class Shader3D(ABC):
             return -1
 
         shader_id = glCreateShader(shader_type)
+
+        if shader_id == 0:
+            print("Couldn't create shader")
+            return -1
 
         shader_path = shader_file
         if shader_folder != "":
@@ -96,9 +90,6 @@ class Shader3D(ABC):
     def get_attrib_loc(self, attrib_name):
         return glGetAttribLocation(self.renderingProgramID, attrib_name)
 
-    def get_uniform_loc(self, uniform_name):
-        return glGetUniformLocation(self.renderingProgramID, uniform_name)
-
     def use(self):
         try:
             glUseProgram(self.renderingProgramID)
@@ -106,13 +97,82 @@ class Shader3D(ABC):
             print(glGetProgramInfoLog(self.renderingProgramID))
             raise
 
-    def get_uniform_value(self, uniform_name, count):
-        datatype = ctypes.c_float
+    def get_uniform_loc(self, uniform_name):
+        if uniform_name in self.uniform_locations:
+            return self.uniform_locations[uniform_name]
+
+        output = glGetUniformLocation(self.renderingProgramID, uniform_name)
+
+        if output != -1:
+            self.uniform_locations[uniform_name] = output
+
+        return output
+
+    def get_uniform_int(self, uniform_name, count):
+        return self.get_uniform_value(uniform_name, count, ctypes.c_int)
+
+    def get_uniform_float(self, uniform_name, count):
+        return self.get_uniform_value(uniform_name, count, ctypes.c_float)
+
+    def get_uniform_value(self, uniform_name, count, datatype):
+        loc = self.get_uniform_loc(uniform_name)
         output = (datatype * count)()
 
-        glGetUniformfv(self.renderingProgramID, self.get_uniform_loc(uniform_name), output)
+        if loc == -1:
+            return None
 
-        return list(output)
+        glGetUniformfv(self.renderingProgramID, loc, output)
+
+        return list(output) if count > 1 else output[0]
+
+    def set_uniform_color(self, color, uniform_name):
+        loc = self.get_uniform_loc(uniform_name)
+
+        if type(color) is Color:
+            color = color.normalize()
+        elif type(color) in [int, float]:
+            color = color, color, color, 1.
+
+        if len(color) == 3:
+            color = (*color, 1.)
+
+        glUniform4f(loc, *color)
+
+    def set_uniform_matrix(self, matrix_array, uniform_name):
+        loc = self.get_uniform_loc(uniform_name)
+        glUniformMatrix4fv(loc, 1, True, matrix_array)
+
+    def set_uniform_vec3D(self, vector: Vector3D, uniform_name, homogenous=True, w=1.0):
+        loc = self.get_uniform_loc(uniform_name)
+
+        if homogenous:
+            glUniform4f(loc, vector.x, vector.y, vector.z, w)
+        else:
+            glUniform3f(loc, vector.x, vector.y, vector.z)
+
+    def set_uniform_float(self, value: float, uniform_name):
+        loc = self.get_uniform_loc(uniform_name)
+        glUniform1f(loc, value)
+
+    def set_uniform_int(self, value: int, uniform_name):
+        loc = self.get_uniform_loc(uniform_name)
+        glUniform1i(loc, value)
+
+    def set_uniform_bool(self, value: bool, uniform_name):
+        self.set_uniform_int(int(value), uniform_name)
+
+    def set_camera_uniforms(self, camera: 'Camera'):
+        self.set_projection_matrix(camera.projection_matrix.values)
+        self.set_view_matrix(camera.view_matrix.values)
+
+    def set_model_matrix(self, matrix_array):
+        self.set_uniform_matrix(matrix_array, self.model_mat_name)
+
+    def set_projection_matrix(self, matrix_array):
+        self.set_uniform_matrix(matrix_array, self.projection_mat_name)
+
+    def set_view_matrix(self, matrix_array):
+        self.set_uniform_matrix(matrix_array, self.view_mat_name)
 
     @property
     @abstractmethod
@@ -131,19 +191,13 @@ class Shader3D(ABC):
 
 class MeshShader(Shader3D):
 
-    def __init__(self, positions, normals, diffuse_color=(1., 1., 1.), specular_color=(0., 0., 0.), unshaded=False, receive_ambient=True, halt_on_error = False):
+    def __init__(self, positions, normals,
+                 diffuse_color=(1., 1., 1.), specular_color=(.0, .0, .0), shininess=30.,
+                 unshaded=False, receive_ambient=True, halt_on_error = False):
         super().__init__("simple3D.vert", "simple3D.frag", halt_on_error=halt_on_error)
 
         self.positionLoc = self.enable_attrib_array("a_position")
         self.normalLoc = self.enable_attrib_array("a_normal")
-
-        self.ambientLoc = self.get_uniform_loc("u_ambient")
-        self.lightPosLoc = self.get_uniform_loc("u_light_position")
-        self.cameraPosLoc = self.get_uniform_loc("u_camera_position")
-        self.lightDiffLoc = self.get_uniform_loc("u_light_diffuse")
-        self.lightSpecLoc = self.get_uniform_loc("u_light_specular")
-        self.matDiffLoc = self.get_uniform_loc("u_material_diffuse")
-        self.matSpecLoc = self.get_uniform_loc("u_material_specular")
 
         self.unshaded = unshaded
         self.receive_ambient = receive_ambient
@@ -151,10 +205,11 @@ class MeshShader(Shader3D):
         self.use()
         self.set_position_attribute(positions)
         self.set_normal_attribute(normals)
-        self.set_material_diffuse(*diffuse_color)
-        self.set_material_specular(*specular_color)
+        self.set_material_diffuse(diffuse_color)
+        self.set_material_specular(specular_color)
         self.set_unshaded(unshaded)
         self.set_receive_ambient(receive_ambient)
+        self.set_shininess(shininess)
 
     def set_position_attribute(self, vertex_array):
         glVertexAttribPointer(self.positionLoc, 3, GL_FLOAT, False, 0, vertex_array)
@@ -162,34 +217,46 @@ class MeshShader(Shader3D):
     def set_normal_attribute(self, vertex_array):
         glVertexAttribPointer(self.normalLoc, 3, GL_FLOAT, False, 0, vertex_array)
 
-    def set_camera_position(self, pos:Vector3D):
-        glUniform4f(self.cameraPosLoc, pos.x, pos.y, pos.z, 1.0)
+    def set_camera_uniforms(self, camera: 'Camera'):
+        super().set_camera_uniforms(camera)
+        self.set_uniform_vec3D(camera.view_matrix.eye, "u_camera_position")
 
-    def set_light_position(self, pos:Vector3D):
-        glUniform4f(self.lightPosLoc, pos.x, pos.y, pos.z, 1.0)
+    def set_light_uniforms(self, light: Light):
+        self.set_uniform_vec3D(light.position, "u_light_position")
+        self.set_uniform_color(light.color, "u_light_diffuse")
+        self.set_uniform_color(light.color, "u_light_specular")
 
-    def set_light_diffuse(self, r, g, b):
-        glUniform4f(self.lightDiffLoc, r, g, b, 1.0)
+    def set_camera_position(self, pos: Vector3D):
+        self.set_uniform_vec3D(pos, "u_camera_position")
 
-    def set_material_diffuse(self, r, g, b):
-        glUniform4fv(self.matDiffLoc, 1, [r, g, b, 1.])
+    def set_light_position(self, pos: Vector3D):
+        self.set_uniform_vec3D(pos, "u_light_position")
 
-    def set_light_specular(self, r, g, b):
-        glUniform4f(self.lightSpecLoc, r, g, b, 1.0)
+    def set_light_diffuse(self, color):
+        self.set_uniform_color(color, "u_light_diffuse")
 
-    def set_material_specular(self, r, g, b):
-        glUniform4f(self.matSpecLoc, r, g, b, 1.0)
+    def set_light_specular(self, color):
+        self.set_uniform_color(color, "u_light_specular")
 
-    def set_ambient(self, r, g, b):
-        glUniform4f(self.ambientLoc, r, g, b, 1.0)
+    def set_material_diffuse(self, color):
+        self.set_uniform_color(color, "u_material_diffuse")
+
+    def set_material_specular(self, color):
+        self.set_uniform_color(color, "u_material_specular")
+
+    def set_ambient(self, color):
+        self.set_uniform_color(color, "u_ambient")
 
     def set_unshaded(self, state: bool):
         self.unshaded = state
-        glUniform1i(self.get_uniform_loc("unshaded"), int(self.unshaded))
+        self.set_uniform_bool(state, "unshaded")
 
     def set_receive_ambient(self, state: bool):
         self.receive_ambient = state
-        glUniform1i(self.get_uniform_loc("receive_ambient"), int(self.receive_ambient))
+        self.set_uniform_bool(state, "receive_ambient")
+
+    def set_shininess(self, value: float):
+        self.set_uniform_float(value, "u_shininess")
 
     @property
     def model_mat_name(self):
