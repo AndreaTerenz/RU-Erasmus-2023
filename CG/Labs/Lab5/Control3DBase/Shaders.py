@@ -4,6 +4,8 @@ from abc import ABC, abstractmethod
 from OpenGL.GL import *
 from OpenGL.error import GLError
 
+from Control3DBase.utils.geometry import Vector3D
+
 DEFAULT_SHADER_DIR = path.join("Control3DBase", "Shader Files")
 DEFAULT_VERTEX = "simple3D.vert"
 DEFAULT_FRAG = "simple3D.frag"
@@ -54,7 +56,6 @@ class Shader3D(ABC):
             return -1
 
         shader_id = glCreateShader(shader_type)
-        print(shader_id)
 
         shader_path = shader_file
         if shader_folder != "":
@@ -122,16 +123,28 @@ class Shader3D(ABC):
 
 class MeshShader(Shader3D):
 
-    def __init__(self, halt_on_error = False, color=None):
+    def __init__(self, halt_on_error = False, diffuse_color=(1., 1., 1.), specular_color=(0., 0., 0.), unshaded=False, receive_ambient=True):
         super().__init__("simple3D.vert", "simple3D.frag", halt_on_error=halt_on_error)
 
         self.positionLoc = self.enable_attrib_array("a_position")
         self.normalLoc = self.enable_attrib_array("a_normal")
 
-        self.colorLoc = self.get_uniform_loc("u_color")
-        if color is not None:
-            self.use()
-            self.set_solid_color(*color)
+        self.ambientLoc = self.get_uniform_loc("u_ambient")
+        self.lightPosLoc = self.get_uniform_loc("u_light_position")
+        self.cameraPosLoc = self.get_uniform_loc("u_camera_position")
+        self.lightDiffLoc = self.get_uniform_loc("u_light_diffuse")
+        self.lightSpecLoc = self.get_uniform_loc("u_light_specular")
+        self.matDiffLoc = self.get_uniform_loc("u_material_diffuse")
+        self.matSpecLoc = self.get_uniform_loc("u_material_specular")
+
+        self.unshaded = unshaded
+        self.receive_ambient = receive_ambient
+
+        self.use()
+        self.set_material_diffuse(*diffuse_color)
+        self.set_material_specular(*specular_color)
+        self.set_unshaded(unshaded)
+        self.set_receive_ambient(receive_ambient)
 
     def set_position_attribute(self, vertex_array):
         glVertexAttribPointer(self.positionLoc, 3, GL_FLOAT, False, 0, vertex_array)
@@ -139,8 +152,34 @@ class MeshShader(Shader3D):
     def set_normal_attribute(self, vertex_array):
         glVertexAttribPointer(self.normalLoc, 3, GL_FLOAT, False, 0, vertex_array)
 
-    def set_solid_color(self, r, g, b):
-        glUniform4f(self.colorLoc, r, g, b, 1.)
+    def set_camera_position(self, pos:Vector3D):
+        glUniform4f(self.cameraPosLoc, pos.x, pos.y, pos.z, 1.0)
+
+    def set_light_position(self, pos:Vector3D):
+        glUniform4f(self.lightPosLoc, pos.x, pos.y, pos.z, 1.0)
+
+    def set_light_diffuse(self, r, g, b):
+        glUniform4f(self.lightDiffLoc, r, g, b, 1.0)
+
+    def set_material_diffuse(self, r, g, b):
+        glUniform4f(self.matDiffLoc, r, g, b, 1.0)
+
+    def set_light_specular(self, r, g, b):
+        glUniform4f(self.lightSpecLoc, r, g, b, 1.0)
+
+    def set_material_specular(self, r, g, b):
+        glUniform4f(self.matSpecLoc, r, g, b, 1.0)
+
+    def set_ambient(self, r, g, b):
+        glUniform4f(self.ambientLoc, r, g, b, 1.0)
+
+    def set_unshaded(self, state: bool):
+        self.unshaded = state
+        glUniform1i(self.get_uniform_loc("unshaded"), int(self.unshaded))
+
+    def set_receive_ambient(self, state: bool):
+        self.receive_ambient = state
+        glUniform1i(self.get_uniform_loc("receive_ambient"), int(self.receive_ambient))
 
     @property
     def model_mat_name(self):

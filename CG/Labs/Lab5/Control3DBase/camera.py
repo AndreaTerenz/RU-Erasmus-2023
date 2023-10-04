@@ -12,7 +12,7 @@ class Camera(Entity3D):
     def __init__(self, parent_app,
                  eye = Vector3D.ZERO, look_at = Vector3D.FORWARD, up_vec=Vector3D.UP,
                  fov =math.tau / 8., ratio =16. / 9., near=.5, far=100):
-        super().__init__(parent_app, origin=eye, size=0., color=None, vertex_shader=None, frag_shader=None)
+        super().__init__(parent_app, origin=eye)
 
         self.projection_matrix = ProjectionMatrix.perspective(fov, ratio, near=near, far=far)
         self.view_matrix = ViewMatrix()
@@ -145,8 +145,8 @@ class FPCamera(Camera):
             pg.K_s: Vector3D.BACKWARD,
             pg.K_a: Vector3D.RIGHT,
             pg.K_d: Vector3D.LEFT,
-            pg.K_q: Vector3D.UP,
-            pg.K_e: Vector3D.DOWN,
+            pg.K_LSHIFT: Vector3D.UP,
+            pg.K_LCTRL: Vector3D.DOWN,
         }
 
         self.rotation_keys = [

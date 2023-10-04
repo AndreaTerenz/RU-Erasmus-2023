@@ -11,7 +11,7 @@ from Control3DBase.utils.gl3d import CUBE_POSITION_ARRAY, CUBE_NORMAL_ARRAY, dra
 
 
 class Entity3D(ABC):
-    def __init__(self, parent_app, origin = Vector3D.ZERO, size=1., color=(1.0, 0.0, 1.0), vertex_shader=None, frag_shader=None):
+    def __init__(self, parent_app, origin = Vector3D.ZERO):
         self.parent_app = parent_app
         self.origin = origin
         self.rotation = Vector3D.ZERO
@@ -54,7 +54,10 @@ class Entity3D(ABC):
     def translate(self, offset: Vector3D):
         self.origin += offset
 
-    def scale(self, factor):
+    def translate_to(self, position: Vector3D):
+        self.origin = position
+
+    def scale_by(self, factor):
         self.scale *= factor
 
     def rotate(self, angle, axis):
@@ -68,25 +71,33 @@ class Entity3D(ABC):
         return self.model_matrix.inverse() * global_pos"""
 
 
-class Cube(Entity3D, ABC):
-    def __init__(self, parent_app, origin = Vector3D.ZERO, size=1., color=(1.0, 0.0, 1.0), vertex_shader=None, frag_shader=None):
-        super().__init__(parent_app, origin, size, color, vertex_shader, frag_shader)
+class Cube(Entity3D):
+
+    def __init__(self, parent_app, origin = Vector3D.ZERO, color=(1.0, 0.0, 1.0)):
+        super().__init__(parent_app, origin)
 
         self.shader = MeshShader()
         self.shader.use()
-        self.shader.set_solid_color(color[0], color[1], color[2])
+        self.shader.set_material_diffuse(*color)
         self.shader.set_position_attribute(CUBE_POSITION_ARRAY)
         self.shader.set_normal_attribute(CUBE_NORMAL_ARRAY)
+        self.shader.set_ambient(*self.parent_app.ambient_color)
 
     def draw(self):
-        draw_cube(self.parent_app.camera, model_matrix=self.model_matrix, shader=self.shader)
+        light = self.parent_app.light
+        camera = self.parent_app.camera
+
+        draw_cube(camera=camera, light=light, ambient_color=self.parent_app.ambient_color, model_matrix=self.model_matrix, shader=self.shader)
 
     def handle_event(self, ev):
         pass
 
+    def _update(self, delta):
+        pass
+
 class Cube1(Cube):
-    def __init__(self, parent_app, origin = Vector3D.ZERO, speed =.5, size=1.):
-        super().__init__(parent_app, origin, size, color=(1.0, 0.0, 0.0))
+    def __init__(self, parent_app, origin = Vector3D.ZERO, speed =.5):
+        super().__init__(parent_app, origin, color=(1.0, 0.0, 0.0))
         self.speed = speed
 
     def _update(self, delta):
@@ -94,8 +105,8 @@ class Cube1(Cube):
         self.translate(Vector3D.FORWARD * delta * fact * self.speed)
 
 class Cube2(Cube):
-    def __init__(self, parent_app, origin = Vector3D.ZERO, size=1.):
-        super().__init__(parent_app, origin, size, color=(0.0, 1.0, 0.0))
+    def __init__(self, parent_app, origin = Vector3D.ZERO):
+        super().__init__(parent_app, origin, color=(1.0, 1.0, 1.0))
 
     def _update(self, delta):
         fact = math.sin(self.parent_app.ticks / 100.)
@@ -104,8 +115,8 @@ class Cube2(Cube):
         self.scale = Vector3D(fact * 2., 1, 1)
 
 class Cube3(Cube):
-    def __init__(self, parent_app, origin = Vector3D.ZERO, size=1.):
-        super().__init__(parent_app, origin, size, color=(0.0, 0.0, 1.0))
+    def __init__(self, parent_app, origin = Vector3D.ZERO):
+        super().__init__(parent_app, origin, color=(0.0, 0.0, 1.0))
 
     def _update(self, delta):
         self.rotate(delta, Vector3D(0, 1, 0))
