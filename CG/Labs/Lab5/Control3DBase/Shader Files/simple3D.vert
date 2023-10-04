@@ -26,16 +26,16 @@ vec4 compute_shaded_color(vec4 position, vec4 normal)
 	vec4 v = u_camera_position - position;
 	vec4 h = (v + s) * .5;
 	float phong = max(0.0, dot(h, normal) / (length(h) * length(normal)));
-	float shininess = 10.;
+	float shininess = 15.;
 	vec4 specular = u_light_specular * u_material_specular * pow(phong, shininess);
 
-	return (u_ambient * float(receive_ambient) * .005) + diffuse; //+ specular;
+	return (u_ambient * float(receive_ambient) * .005) + diffuse + specular;
 }
 
 void main(void)
 {
 	vec4 position = vec4(a_position, 1.0);
-	vec4 normal = vec4(a_normal, 1.0);
+	vec4 normal = vec4(a_normal, 0.0);
 
 	position = u_model_matrix * position;
 	normal = u_model_matrix * normal;

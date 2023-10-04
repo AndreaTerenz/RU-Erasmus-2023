@@ -76,12 +76,7 @@ class Cube(Entity3D):
     def __init__(self, parent_app, origin = Vector3D.ZERO, color=(1.0, 0.0, 1.0)):
         super().__init__(parent_app, origin)
 
-        self.shader = MeshShader()
-        self.shader.use()
-        self.shader.set_material_diffuse(*color)
-        self.shader.set_position_attribute(CUBE_POSITION_ARRAY)
-        self.shader.set_normal_attribute(CUBE_NORMAL_ARRAY)
-        self.shader.set_ambient(*self.parent_app.ambient_color)
+        self.shader = MeshShader(positions=CUBE_POSITION_ARRAY, normals=CUBE_NORMAL_ARRAY, diffuse_color=color)
 
     def draw(self):
         light = self.parent_app.light
@@ -94,34 +89,3 @@ class Cube(Entity3D):
 
     def _update(self, delta):
         pass
-
-class Cube1(Cube):
-    def __init__(self, parent_app, origin = Vector3D.ZERO, speed =.5):
-        super().__init__(parent_app, origin, color=(1.0, 0.0, 0.0))
-        self.speed = speed
-
-    def _update(self, delta):
-        fact = math.sin(self.parent_app.ticks / 100.) * 1.
-        self.translate(Vector3D.FORWARD * delta * fact * self.speed)
-
-class Cube2(Cube):
-    def __init__(self, parent_app, origin = Vector3D.ZERO):
-        super().__init__(parent_app, origin, color=(1.0, 1.0, 1.0))
-
-    def _update(self, delta):
-        fact = math.sin(self.parent_app.ticks / 100.)
-        fact = (fact + 1.) / 2. # Remap [-1, 1] to [0, 1]
-
-        self.scale = Vector3D(fact * 2., 1, 1)
-
-class Cube3(Cube):
-    def __init__(self, parent_app, origin = Vector3D.ZERO):
-        super().__init__(parent_app, origin, color=(0.0, 0.0, 1.0))
-
-    def _update(self, delta):
-        self.rotate(delta, Vector3D(0, 1, 0))
-
-        fact = math.sin(self.parent_app.ticks / 500.)
-        fact = (fact + 1.) / 2. # Remap [-1, 1] to [0, 1]
-
-        self.scale = Vector3D(fact * 2., 1, 1)

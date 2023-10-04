@@ -106,6 +106,14 @@ class Shader3D(ABC):
             print(glGetProgramInfoLog(self.renderingProgramID))
             raise
 
+    def get_uniform_value(self, uniform_name, count):
+        datatype = ctypes.c_float
+        output = (datatype * count)()
+
+        glGetUniformfv(self.renderingProgramID, self.get_uniform_loc(uniform_name), output)
+
+        return list(output)
+
     @property
     @abstractmethod
     def model_mat_name(self):
@@ -123,7 +131,7 @@ class Shader3D(ABC):
 
 class MeshShader(Shader3D):
 
-    def __init__(self, halt_on_error = False, diffuse_color=(1., 1., 1.), specular_color=(0., 0., 0.), unshaded=False, receive_ambient=True):
+    def __init__(self, positions, normals, diffuse_color=(1., 1., 1.), specular_color=(0., 0., 0.), unshaded=False, receive_ambient=True, halt_on_error = False):
         super().__init__("simple3D.vert", "simple3D.frag", halt_on_error=halt_on_error)
 
         self.positionLoc = self.enable_attrib_array("a_position")
@@ -135,12 +143,15 @@ class MeshShader(Shader3D):
         self.lightDiffLoc = self.get_uniform_loc("u_light_diffuse")
         self.lightSpecLoc = self.get_uniform_loc("u_light_specular")
         self.matDiffLoc = self.get_uniform_loc("u_material_diffuse")
+        print("DIOMERDONE", self.matDiffLoc)
         self.matSpecLoc = self.get_uniform_loc("u_material_specular")
 
         self.unshaded = unshaded
         self.receive_ambient = receive_ambient
 
         self.use()
+        self.set_position_attribute(positions)
+        self.set_normal_attribute(normals)
         self.set_material_diffuse(*diffuse_color)
         self.set_material_specular(*specular_color)
         self.set_unshaded(unshaded)
@@ -162,7 +173,11 @@ class MeshShader(Shader3D):
         glUniform4f(self.lightDiffLoc, r, g, b, 1.0)
 
     def set_material_diffuse(self, r, g, b):
-        glUniform4f(self.matDiffLoc, r, g, b, 1.0)
+        glUniform4fv(self.matDiffLoc, 1, [r, g, b, 1.])
+
+        val = self.get_uniform_value("u_material_diffuse", 4)
+
+        print("PISELLI ", val)
 
     def set_light_specular(self, r, g, b):
         glUniform4f(self.lightSpecLoc, r, g, b, 1.0)

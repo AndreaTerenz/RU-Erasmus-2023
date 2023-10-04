@@ -1,6 +1,6 @@
 from pygame.locals import *
 
-from Control3DBase.Base3DObjects import Cube1, Cube2, Cube3, Cube
+from Control3DBase.Base3DObjects import Cube
 from Control3DBase.Matrices import ModelMatrix
 from Control3DBase.Shaders import *
 from Control3DBase.camera import *
@@ -37,25 +37,26 @@ class GraphicsProgram3D:
         self.ambient_color = np.array(ambient_color[:3])*.1
 
         self.camera = FPCamera(self, eye=Vector3D(-2., 1., 2.) * 5., look_at=Vector3D.ZERO, ratio=ratio, fov=fov, near=.5, far=100)
-        self.light = Light(Vector3D(0., 0., 0.), (2., 0., 2.))
+        self.light = Light(Vector3D(0., 0., 0.), (1., 1., 1.))
         self.light_angle = 0.
 
-        self.ground_shader = MeshShader(diffuse_color=(.5, .5, .5))
+        self.ground_shader = MeshShader(PLANE_POSITION_ARRAY, PLANE_NORMAL_ARRAY, diffuse_color=(.5, .5, .5))
 
-        self.cubes = [
-            Cube(self, origin=Vector3D(3., 0., 0.), color=(0., 1., 0.)),
-            Cube(self, origin=Vector3D(-3., 0., 0.), color=(0., 1., 0.)),
-            Cube(self, origin=Vector3D(0., 0., 3.), color=(1., 0., 0.)),
-            Cube(self, origin=Vector3D(0., 0., -3.), color=(1., 0., 0.)),
-            Cube(self, origin=Vector3D(0., 3., 0.), color=(0., 0., 1.)),
-            Cube(self, origin=Vector3D(0., -3., 0.), color=(0., 0., 1.)),
+        dist = 3.
+        self.objects = [
+            Cube(self, origin=Vector3D(0., 0., 1.) * dist, color=(1., 0., 0.)),
+            Cube(self, origin=Vector3D(0., 0.,   -1.) * dist, color=(1., 0., 0.)),
+            Cube(self, origin=Vector3D(1., 0., 0.) * dist, color=(1., 1., 0.)),
+            Cube(self, origin=Vector3D(  -1., 0., 0.) * dist, color=(0., 1., 1.)),
+            Cube(self, origin=Vector3D(0., 1., 0.) * dist, color=(0., 0., 1.)),
+            Cube(self, origin=Vector3D(0.,   -1., 0.) * dist, color=(0., 0., 1.)),
             Cube(self, origin=Vector3D(0., 0., 0.)),
         ]
 
-        self.cubes[-1].scale_by(.1)
-        self.cubes[-1].shader.use()
-        self.cubes[-1].shader.set_unshaded(True)
-        self.cubes[-1].translate_to(self.light.position)
+        self.objects[-1].scale_by(.1)
+        self.objects[-1].shader.use()
+        self.objects[-1].shader.set_unshaded(True)
+        self.objects[-1].translate_to(self.light.position)
 
         self.clock = pg.time.Clock()
 
@@ -90,10 +91,10 @@ class GraphicsProgram3D:
 
         if light_dir != Vector3D.ZERO:
             self.light.position += light_dir * delta_time * 4.
-            self.cubes[-1].translate_to(self.light.position)
+            self.objects[-1].translate_to(self.light.position)
 
-        for cube in self.cubes:
-            cube.update(delta_time)
+        for obj in self.objects:
+            obj.update(delta_time)
 
     def display(self):
         #glEnable(GL_CULL_FACE)
@@ -107,12 +108,8 @@ class GraphicsProgram3D:
 
         glViewport(0, 0, self.win_size.x, self.win_size.y)
 
-        draw_plane(camera=self.camera, light=self.light, ambient_color=self.ambient_color, shader=self.ground_shader, offset=Vector3D.DOWN * 4., scale=Vector3D(10, 0, 10))
-
-        for cube in self.cubes:
-            cube.draw()
-
-
+        for obj in self.objects:
+            obj.draw()
 
         pg.display.flip()
 

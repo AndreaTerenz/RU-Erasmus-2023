@@ -32,15 +32,33 @@ CUBE_POSITION_ARRAY = np.array(
           1,  1,  1,
           1,  1, -1])*.5
 
-CUBE_NORMAL_ARRAY = np.array([ 0.0,  0.0, -1.0] * 4 +
-                             [ 0.0,  0.0,  1.0] * 4 +
-                             [ 0.0, -1.0,  0.0] * 4 +
-                             [ 0.0,  1.0,  0.0] * 4 +
-                             [-1.0,  0.0,  0.0] * 4 +
-                             [ 1.0,  0.0,  0.0] * 4)
+CUBE_NORMAL_ARRAY = np.array([0.0, 0.0, -1.0,
+                            0.0, 0.0, -1.0,
+                            0.0, 0.0, -1.0,
+                            0.0, 0.0, -1.0,
+                            0.0, 0.0, 1.0,
+                            0.0, 0.0, 1.0,
+                            0.0, 0.0, 1.0,
+                            0.0, 0.0, 1.0,
+                            0.0, -1.0, 0.0,
+                            0.0, -1.0, 0.0,
+                            0.0, -1.0, 0.0,
+                            0.0, -1.0, 0.0,
+                            0.0, 1.0, 0.0,
+                            0.0, 1.0, 0.0,
+                            0.0, 1.0, 0.0,
+                            0.0, 1.0, 0.0,
+                            -1.0, 0.0, 0.0,
+                            -1.0, 0.0, 0.0,
+                            -1.0, 0.0, 0.0,
+                            -1.0, 0.0, 0.0,
+                            1.0, 0.0, 0.0,
+                            1.0, 0.0, 0.0,
+                            1.0, 0.0, 0.0,
+                            1.0, 0.0, 0.0])
 
 PLANE_POSITION_ARRAY = np.array([-1, 0, -1, -1, 0, 1, 1, 0, 1, 1, 0, -1])
-PLANE_NORMAL_ARRAY = np.array([0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1])
+PLANE_NORMAL_ARRAY = np.array([0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0])
 
 def draw_cube(camera, light, shader, ambient_color = (1., 1., 1., 1.), offset: Vector3D = Vector3D.ZERO, rotation: Vector3D = None, scale:Vector3D = None, model_matrix: ModelMatrix = None):
     draw_mesh(camera, light, shader, CUBE_POSITION_ARRAY, CUBE_NORMAL_ARRAY, 4, 6, ambient_color, offset, scale, rotation, model_matrix)
