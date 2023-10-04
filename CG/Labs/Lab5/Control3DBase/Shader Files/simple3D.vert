@@ -15,21 +15,22 @@ uniform vec4 u_ambient;
 uniform bool receive_ambient;
 uniform bool unshaded;
 
-varying vec4 v_color;  //Leave the varying variables alone to begin with
+varying vec4 v_color;
+varying vec4 s, v, h;
+varying vec4 norm;
+varying vec4 diff_mult, spec_mult, ambient_mult;
 
-vec4 compute_shaded_color(vec4 position, vec4 normal)
+vec4 compute_shaded_color()
 {
-	vec4 s = u_light_position - position;
-	float lambert = max(0.0, dot(s, normal) / (length(s) * length(normal)));
-	vec4 diffuse = u_light_diffuse * u_material_diffuse * lambert;
+	float lambert = max(0.0, dot(s, norm) / (length(s) * length(norm)));
+	vec4 diffuse = diff_mult * lambert;
 
-	vec4 v = u_camera_position - position;
 	vec4 h = (v + s) * .5;
-	float phong = max(0.0, dot(h, normal) / (length(h) * length(normal)));
+	float phong = max(0.0, dot(h, norm) / (length(h) * length(norm)));
 	float shininess = 15.;
-	vec4 specular = u_light_specular * u_material_specular * pow(phong, shininess);
+	vec4 specular = spec_mult * pow(phong, shininess);
 
-	return (u_ambient * float(receive_ambient) * .005) + diffuse + specular;
+	return ambient_mult + diffuse + specular;
 }
 
 void main(void)
@@ -40,8 +41,15 @@ void main(void)
 	position = u_model_matrix * position;
 	normal = u_model_matrix * normal;
 
-	v_color = unshaded ? u_material_diffuse : compute_shaded_color(position, normal);
+	s = u_light_position - position;
+	v = u_camera_position - position;
+	norm = normalize(normal);
 
+	diff_mult = u_light_diffuse * u_material_diffuse;
+	spec_mult = u_light_specular * u_material_specular;
+	ambient_mult = (u_ambient * .05);
+
+	v_color = compute_shaded_color();
 	position = u_projection_matrix * (u_view_matrix * position);
 
 	gl_Position = position;

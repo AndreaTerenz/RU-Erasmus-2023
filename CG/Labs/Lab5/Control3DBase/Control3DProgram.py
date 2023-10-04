@@ -34,7 +34,7 @@ class GraphicsProgram3D:
 
         ratio = self.win_size.aspect_ratio
 
-        self.ambient_color = np.array(ambient_color[:3])*.1
+        self.ambient_color = (1., 1., 1.)#np.array(ambient_color[:3]) / 255.
 
         self.camera = FPCamera(self, eye=Vector3D(-2., 1., 2.) * 5., look_at=Vector3D.ZERO, ratio=ratio, fov=fov, near=.5, far=100)
         self.light = Light(Vector3D(0., 0., 0.), (1., 1., 1.))

@@ -143,7 +143,6 @@ class MeshShader(Shader3D):
         self.lightDiffLoc = self.get_uniform_loc("u_light_diffuse")
         self.lightSpecLoc = self.get_uniform_loc("u_light_specular")
         self.matDiffLoc = self.get_uniform_loc("u_material_diffuse")
-        print("DIOMERDONE", self.matDiffLoc)
         self.matSpecLoc = self.get_uniform_loc("u_material_specular")
 
         self.unshaded = unshaded
@@ -174,10 +173,6 @@ class MeshShader(Shader3D):
 
     def set_material_diffuse(self, r, g, b):
         glUniform4fv(self.matDiffLoc, 1, [r, g, b, 1.])
-
-        val = self.get_uniform_value("u_material_diffuse", 4)
-
-        print("PISELLI ", val)
 
     def set_light_specular(self, r, g, b):
         glUniform4f(self.lightSpecLoc, r, g, b, 1.0)
