@@ -3,12 +3,13 @@ import math
 import numpy as np
 import pygame as pg
 
-from Control3DBase.Base3DObjects import Entity3D
+from Control3DBase.Base3DObjects import Entity
 from Control3DBase.Matrices import ProjectionMatrix, ViewMatrix
 from Control3DBase.utils.geometry import Vector3D, Vector2D
 
 
-class Camera(Entity3D):
+class Camera(Entity):
+
     def __init__(self, parent_app,
                  eye = Vector3D.ZERO, look_at = Vector3D.FORWARD, up_vec=Vector3D.UP,
                  fov =math.tau / 8., ratio =16. / 9., near=.5, far=100):
@@ -20,23 +21,17 @@ class Camera(Entity3D):
 
         self.look_at(look_at, up_vec)
 
-    def draw(self):
+    def _update(self, delta):
+        pass
+
+    def handle_event(self, ev):
         pass
 
     def look_at(self, target, up=Vector3D.UP):
         self.target = target
         self.view_matrix.look_at(self.origin, target, up)
 
-        psi, phi, theta = self.get_rot_angles()
-        self.rotate(psi, Vector3D.UP)
-        self.rotate(phi, Vector3D.RIGHT)
-        self.rotate(theta, Vector3D.FORWARD)
-        self.update_model_matrix()
-
     def slide(self, offset):
-        self.translate(offset)
-        self.update_model_matrix()
-
         self.target += offset
         self.view_matrix.slide(*offset)
 

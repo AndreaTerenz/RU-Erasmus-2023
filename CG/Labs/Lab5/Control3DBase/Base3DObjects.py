@@ -7,16 +7,33 @@ from OpenGL.GL import *
 from Control3DBase.Matrices import ModelMatrix
 from Control3DBase.Shaders import MeshShader
 from Control3DBase.utils.geometry import Vector3D
-from Control3DBase.utils.gl3d import CUBE_POSITION_ARRAY, CUBE_NORMAL_ARRAY, draw_cube
+from Control3DBase.utils.gl3d import CUBE_POSITION_ARRAY, CUBE_NORMAL_ARRAY, draw_cube, PLANE_POSITION_ARRAY, \
+    PLANE_NORMAL_ARRAY, euler_from_vectors, draw_plane
 
 
-class Entity3D(ABC):
+class Entity(ABC):
     def __init__(self, parent_app, origin = Vector3D.ZERO):
         self.parent_app = parent_app
         self.origin = origin
-        self.rotation = Vector3D.ZERO
-        self.scale = Vector3D.ONE
-        self.model_matrix = ModelMatrix()
+
+    def update(self, delta):
+        self._update(delta)
+
+    @abstractmethod
+    def _update(self, delta):
+        pass
+
+    @abstractmethod
+    def handle_event(self, ev):
+        pass
+
+class MeshEntity(Entity):
+    def __init__(self, parent_app, origin = Vector3D.ZERO, rotation = Vector3D.ZERO, scale = Vector3D.ONE):
+        super().__init__(parent_app, origin)
+
+        self.rotation = rotation
+        self.scale = scale
+        self.model_matrix = ModelMatrix.from_transformations(origin, rotation, scale)
         self.shader = None
 
     def update_model_matrix(self):
@@ -30,22 +47,11 @@ class Entity3D(ABC):
 
     @abstractmethod
     def draw(self):
-        self.shader.use()
-
-        for k in range(6):
-            glDrawArrays(GL_TRIANGLE_FAN, k*4, 4)
+        pass
 
     def update(self, delta):
         self._update(delta)
         self.update_model_matrix()
-
-    @abstractmethod
-    def _update(self, delta):
-        pass
-
-    @abstractmethod
-    def handle_event(self, ev):
-        pass
 
     @property
     def forward(self):
@@ -71,7 +77,7 @@ class Entity3D(ABC):
         return self.model_matrix.inverse() * global_pos"""
 
 
-class Cube(Entity3D):
+class Cube(MeshEntity):
 
     def __init__(self, parent_app, origin = Vector3D.ZERO, color=(1.0, 0.0, 1.0)):
         super().__init__(parent_app, origin)
@@ -89,3 +95,31 @@ class Cube(Entity3D):
 
     def _update(self, delta):
         pass
+
+class Plane(MeshEntity):
+    def __init__(self, parent_app, origin = Vector3D.ZERO, color=(1.0, 0.0, 1.0), normal=Vector3D.UP, scale = Vector3D.ONE):
+        rotation = Vector3D(*euler_from_vectors(normal))
+
+        super().__init__(parent_app, origin, rotation=rotation, scale=scale)
+
+        self.shader = MeshShader(positions=PLANE_POSITION_ARRAY, normals=PLANE_NORMAL_ARRAY, diffuse_color=color)
+
+    def point_to(self, dir: Vector3D):
+        rotation = Vector3D(*euler_from_vectors(dir))
+        self.rotate(rotation.x, Vector3D.RIGHT)
+        self.rotate(rotation.y, Vector3D.UP)
+        self.rotate(rotation.z, Vector3D.FORWARD)
+
+    def draw(self):
+        camera = self.parent_app.camera
+        light = self.parent_app.light
+
+        draw_plane(camera, light, ambient_color=self.parent_app.ambient_color,
+                   model_matrix=self.model_matrix, shader=self.shader)
+
+    def _update(self, delta):
+        pass
+
+    def handle_event(self, ev):
+        pass
+

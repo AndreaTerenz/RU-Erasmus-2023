@@ -3,7 +3,7 @@ from abc import ABC
 
 import numpy as np
 
-from Control3DBase.utils.geometry import Vector3D
+from Control3DBase.utils.geometry import Vector3D, classproperty
 
 
 def set_values_in_matrix(matrix, idx_val_zip):
@@ -47,6 +47,67 @@ class Matrix(ABC):
     def values(self):
         return self._matrix
 
+    """@staticmethod
+    def translation_matrix(offset: [float|Vector3D]):
+        if type(offset) is float:
+            offset = Vector3D(offset)
+
+        return np.array([
+            [1, 0, 0, offset.x],
+            [0, 1, 0, offset.y],
+            [0, 0, 1, offset.z],
+            [0, 0, 0, 1]
+        ], dtype=np.float32)
+
+    @staticmethod
+    def translation_matrix_to(position: Vector3D, target: Vector3D):
+        return Matrix.translation_matrix(target - position)
+
+    @staticmethod
+    def rotation_matrix(angle, axis):
+        c = np.cos(angle)
+        s = np.sin(angle)
+        t = 1 - c
+
+        x, y, z = axis.normalized
+
+        return np.array([
+            [t * x * x + c,     t * x * y - z * s, t * x * z + y * s, 0],
+            [t * x * y + z * s, t * y * y + c,     t * y * z - x * s, 0],
+            [t * x * z - y * s, t * y * z + x * s, t * z * z + c, 0],
+            [0, 0, 0, 1]
+        ], dtype=np.float32)
+
+    @staticmethod
+    def rotation_matrix_euler(angles: [float|Vector3D]):
+        if type(angles) is float:
+            angles = Vector3D(angles)
+
+        x, y, z = angles
+
+        cx, sx = np.cos(x), np.sin(x)
+        cy, sy = np.cos(y), np.sin(y)
+        cz, sz = np.cos(z), np.sin(z)
+
+        return np.array([
+            [cy*cz,            -cy*sz,            sy, 0],
+            [cx*sz + sx*sy*cz,  cx*cz - sx*sy*sz, -sx*cy, 0],
+            [sx*sz - cx*sy*cz,  sx*cz + cx*sy*sz,  cx*cy, 0],
+            [0, 0, 0, 1]
+        ], dtype=np.float32)
+
+    @staticmethod
+    def scale_matrix(scale: [float|Vector3D]):
+        if type(scale) is float:
+            scale = Vector3D(scale)
+
+        return np.array([
+            [scale.x, 0, 0, 0],
+            [0, scale.y, 0, 0],
+            [0, 0, scale.z, 0],
+            [0, 0, 0, 1]
+        ], dtype=np.float32)"""
+
 class ModelMatrix(Matrix):
     def __init__(self):
         super().__init__(4, 4)
@@ -69,13 +130,11 @@ class ModelMatrix(Matrix):
         return matrix
 
     def add_translation(self, x : [float|Vector3D], y = None, z = None):
-        if type(x) is Vector3D:
-            offset = x
-        else:
+        offset = x
+        if not type(x) is Vector3D:
             offset = Vector3D(x, y, z)
 
-        translation_matrix = np.eye(4).flatten()
-        set_values_in_matrix(translation_matrix, zip([3, 7, 11], [offset.x, offset.y, offset.z]))
+        translation_matrix = set_values_in_matrix(np.eye(4).flatten(), zip([3, 7, 11], [offset.x, offset.y, offset.z]))
 
         self.add_transformation(translation_matrix)
 
@@ -83,18 +142,34 @@ class ModelMatrix(Matrix):
         if type(angle_x) is Vector3D:
             angle_x, angle_y, angle_z = angle_x.x, angle_x.y, angle_x.z
 
-        rotation_matrix = np.eye(4).flatten()
         cx, sx = np.cos(angle_x), np.sin(angle_x)
         cy, sy = np.cos(angle_y), np.sin(angle_y)
         cz, sz = np.cos(angle_z), np.sin(angle_z)
 
-        set_values_in_matrix(rotation_matrix,
-                             zip([0, 1, 2, 4, 5, 6, 8, 9, 10],
-                                 [cy*cz,            -cy*sz,            sy,
-                                  cx*sz + sx*sy*cz,  cx*cz - sx*sy*sz, -sx*cy,
-                                  sx*sz - cx*sy*cz,  sx*cz + cx*sy*sz,  cx*cy]))
+        rot_mat_x = np.array([
+            [1, 0, 0, 0],
+            [0, cx, -sx, 0],
+            [0, sx, cx, 0],
+            [0, 0, 0, 1]
+        ])
 
-        self.add_transformation(rotation_matrix)
+        rot_mat_y = np.array([
+            [cy, 0, sy, 0],
+            [0, 1, 0, 0],
+            [-sy, 0, cy, 0],
+            [0, 0, 0, 1]
+        ])
+
+        rot_mat_z = np.array([
+            [cz, -sz, 0, 0],
+            [sz, cz, 0, 0],
+            [0, 0, 1, 0],
+            [0, 0, 0, 1]
+        ])
+
+        self.add_transformation(rot_mat_x)
+        self.add_transformation(rot_mat_y)
+        self.add_transformation(rot_mat_z)
 
     def add_scale(self, x : [float|Vector3D], y = None, z = None):
         if type(x) is Vector3D:
@@ -102,8 +177,7 @@ class ModelMatrix(Matrix):
         else:
             scale = Vector3D(x, y, z)
 
-        scale_matrix = np.eye(4).flatten()
-        set_values_in_matrix(scale_matrix, zip([0, 5, 10], [scale.x, scale.y, scale.z]))
+        scale_matrix = set_values_in_matrix(np.eye(4).flatten(), zip([0, 5, 10], [scale.x, scale.y, scale.z]))
 
         self.add_transformation(scale_matrix)
 

@@ -443,6 +443,22 @@ class Vector3D(AbstractVector):
 
         return self * cos_angle + axis.cross(self) * sin_angle + axis * axis.dot(self) * (1. - cos_angle)
 
+    def rotation_to(self, other: "Vector3D"):
+        norm1, norm2 = self.normalized, other.normalized
+
+        cross = norm1.cross(norm2)
+
+        if cross.length_sq == 0.:
+            return Vector3D.ZERO
+
+        axis = cross.normalized
+
+        angle_x = math.atan2(axis.z, axis.y)
+        angle_y = math.atan2(axis.x, axis.z)
+        angle_z = math.atan2(axis.y, axis.x)
+
+        return angle_x, angle_y, angle_z
+
     def cross(self, other):
         return Vector3D(
             self.y * other.z - self.z * other.y,
@@ -468,6 +484,20 @@ class Vector3D(AbstractVector):
         rotated = rotated[:3] / rotated[3]
 
         return Vector3D(*rotated)
+
+def euler_from_vectors(normal_vector, up_vector=Vector3D.UP):
+    # Normalize the input vectors
+    normal_vector = normal_vector.normalized
+    up_vector = up_vector.normalized
+
+    # Calculate the right vector (U) using the cross product
+    right_vector = normal_vector.cross(up_vector).normalized
+
+    pitch = np.arctan2(right_vector.x, right_vector.y)
+    yaw = np.arctan2(normal_vector.y, normal_vector.z)
+    roll = np.arctan2(-normal_vector.x, normal_vector.yz.length)
+
+    return pitch, yaw, roll
 
 
 if __name__ == '__main__':

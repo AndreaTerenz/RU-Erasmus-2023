@@ -1,6 +1,6 @@
 from pygame.locals import *
 
-from Control3DBase.Base3DObjects import Cube
+from Control3DBase.Base3DObjects import Cube, Plane
 from Control3DBase.Matrices import ModelMatrix
 from Control3DBase.Shaders import *
 from Control3DBase.camera import *
@@ -40,23 +40,27 @@ class GraphicsProgram3D:
         self.light = Light(Vector3D(0., 0., 0.), (1., 1., 1.))
         self.light_angle = 0.
 
-        self.ground_shader = MeshShader(PLANE_POSITION_ARRAY, PLANE_NORMAL_ARRAY, diffuse_color=(.5, .5, .5))
+        self.light_cube = Cube(self)
+        self.light_cube.scale_by(.1)
+        self.light_cube.shader.set_material_diffuse(self.light.color)
+        self.light_cube.shader.set_unshaded(True)
+        self.light_cube.translate_to(self.light.position)
 
         dist = 3.
         self.objects = [
-            Cube(self, origin=Vector3D(0., 0., 1.) * dist, color=(1., 0., 0.)),
-            Cube(self, origin=Vector3D(0., 0.,   -1.) * dist, color=(1., 0., 0.)),
-            Cube(self, origin=Vector3D(1., 0., 0.) * dist, color=(1., 1., 0.)),
-            Cube(self, origin=Vector3D(  -1., 0., 0.) * dist, color=(0., 1., 1.)),
-            Cube(self, origin=Vector3D(0., 1., 0.) * dist, color=(0., 0., 1.)),
-            Cube(self, origin=Vector3D(0.,   -1., 0.) * dist, color=(0., 0., 1.)),
-            Cube(self, origin=Vector3D(0., 0., 0.)),
-        ]
+            Plane(self, origin=Vector3D(0., -5., 0.), color=(.5, .5, .5), scale=Vector3D.ONE*10.),
+            Plane(self, origin=Vector3D(0., 5., -10.), color=(.5, .5, .5), normal=Vector3D.BACKWARD, scale=Vector3D.ONE*10.),
+            Plane(self, origin=Vector3D(10., 5., 0.), color=(.5, .5, .5), normal=Vector3D.LEFT, scale=Vector3D.ONE*10.),
 
-        self.objects[-1].scale_by(.1)
-        self.objects[-1].shader.set_material_diffuse(self.light.color)
-        self.objects[-1].shader.set_unshaded(True)
-        self.objects[-1].translate_to(self.light.position)
+            Cube(self, color=(1., 0., 0.), origin=dist * Vector3D.FORWARD),
+            Cube(self, color=(1., 0., 0.), origin=dist * Vector3D.BACKWARD),
+            Cube(self, color=(1., 1., 0.), origin=dist * Vector3D.RIGHT),
+            Cube(self, color=(0., 1., 1.), origin=dist * Vector3D.LEFT),
+            Cube(self, color=(0., 0., 1.), origin=dist * Vector3D.UP),
+            Cube(self, color=(0., 0., 1.), origin=dist * Vector3D.DOWN),
+
+            self.light_cube,
+        ]
 
         self.clock = pg.time.Clock()
 
@@ -91,7 +95,7 @@ class GraphicsProgram3D:
 
         if light_dir != Vector3D.ZERO:
             self.light.position += light_dir.normalized * delta_time * 4.
-            self.objects[-1].translate_to(self.light.position)
+            self.light_cube.translate_to(self.light.position)
 
         for obj in self.objects:
             obj.update(delta_time)
@@ -107,8 +111,6 @@ class GraphicsProgram3D:
         glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT)  ### --- YOU CAN ALSO CLEAR ONLY THE COLOR OR ONLY THE DEPTH --- ###
 
         glViewport(0, 0, self.win_size.x, self.win_size.y)
-
-        draw_plane(self.camera, self.light, self.ground_shader, self.ambient_color, offset=Vector3D.DOWN * 4., scale=Vector3D(10., 1., 10.))
 
         for obj in self.objects:
             obj.draw()
