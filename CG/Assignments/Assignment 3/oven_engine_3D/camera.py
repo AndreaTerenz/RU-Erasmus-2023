@@ -3,9 +3,9 @@ import math
 import numpy as np
 import pygame as pg
 
-from Control3DBase.Base3DObjects import Entity
-from Control3DBase.Matrices import ProjectionMatrix, ViewMatrix
-from Control3DBase.utils.geometry import Vector3D, Vector2D
+from oven_engine_3D.entities import Entity
+from oven_engine_3D.matrices import ProjectionMatrix, ViewMatrix
+from oven_engine_3D.utils.geometry import Vector3D, Vector2D
 
 
 class Camera(Entity):

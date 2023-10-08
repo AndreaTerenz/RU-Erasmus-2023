@@ -3,11 +3,11 @@ from abc import abstractmethod, ABC
 
 from OpenGL.GL import *
 
-# from Control3DBase.Geometry import Vector3D
-from Control3DBase.Matrices import ModelMatrix
-from Control3DBase.Shaders import MeshShader
-from Control3DBase.utils.geometry import Vector3D
-from Control3DBase.utils.gl3d import CUBE_POSITION_ARRAY, CUBE_NORMAL_ARRAY, draw_cube, PLANE_POSITION_ARRAY, \
+# from oven_engine_3D.Geometry import Vector3D
+from oven_engine_3D.matrices import ModelMatrix
+from oven_engine_3D.shaders import MeshShader
+from oven_engine_3D.utils.geometry import Vector3D
+from oven_engine_3D.utils.gl3d import CUBE_POSITION_ARRAY, CUBE_NORMAL_ARRAY, draw_cube, PLANE_POSITION_ARRAY, \
     PLANE_NORMAL_ARRAY, euler_from_vectors, draw_plane
 
 
@@ -28,13 +28,13 @@ class Entity(ABC):
         pass
 
 class MeshEntity(Entity):
-    def __init__(self, parent_app, origin = Vector3D.ZERO, rotation = Vector3D.ZERO, scale = Vector3D.ONE):
+    def __init__(self, parent_app, origin = Vector3D.ZERO, rotation = Vector3D.ZERO, scale = Vector3D.ONE, shader=None):
         super().__init__(parent_app, origin)
 
         self.rotation = rotation
         self.scale = scale
         self.model_matrix = ModelMatrix.from_transformations(origin, rotation, scale)
-        self.shader = None
+        self.shader = shader
 
     def update_model_matrix(self):
         self.model_matrix.load_identity()
@@ -79,10 +79,11 @@ class MeshEntity(Entity):
 
 class Cube(MeshEntity):
 
-    def __init__(self, parent_app, origin = Vector3D.ZERO, color=(1.0, 0.0, 1.0)):
-        super().__init__(parent_app, origin)
+    def __init__(self, parent_app, origin = Vector3D.ZERO, color=(1.0, 0.0, 1.0), shader=None):
+        if shader is None:
+            shader = MeshShader(positions=CUBE_POSITION_ARRAY, normals=CUBE_NORMAL_ARRAY, diffuse_color=color)
 
-        self.shader = MeshShader(positions=CUBE_POSITION_ARRAY, normals=CUBE_NORMAL_ARRAY, diffuse_color=color)
+        super().__init__(parent_app, origin, shader=shader)
 
     def draw(self):
         light = self.parent_app.light
@@ -97,12 +98,12 @@ class Cube(MeshEntity):
         pass
 
 class Plane(MeshEntity):
-    def __init__(self, parent_app, origin = Vector3D.ZERO, color=(1.0, 0.0, 1.0), normal=Vector3D.UP, scale = Vector3D.ONE):
+    def __init__(self, parent_app, origin = Vector3D.ZERO, color=(1.0, 0.0, 1.0), normal=Vector3D.UP, scale = Vector3D.ONE, shader=None):
         rotation = Vector3D(*euler_from_vectors(normal))
+        if shader is None:
+            shader = MeshShader(positions=PLANE_POSITION_ARRAY, normals=PLANE_NORMAL_ARRAY, diffuse_color=color)
 
-        super().__init__(parent_app, origin, rotation=rotation, scale=scale)
-
-        self.shader = MeshShader(positions=PLANE_POSITION_ARRAY, normals=PLANE_NORMAL_ARRAY, diffuse_color=color)
+        super().__init__(parent_app, origin, rotation=rotation, scale=scale, shader=shader)
 
     def point_to(self, dir: Vector3D):
         rotation = Vector3D(*euler_from_vectors(dir))

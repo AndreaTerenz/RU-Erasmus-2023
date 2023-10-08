@@ -3,7 +3,7 @@ from abc import ABC
 
 import numpy as np
 
-from Control3DBase.utils.geometry import Vector3D, classproperty
+from oven_engine_3D.utils.geometry import Vector3D, classproperty
 
 
 def set_values_in_matrix(matrix, idx_val_zip):

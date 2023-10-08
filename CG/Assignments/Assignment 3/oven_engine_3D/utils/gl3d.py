@@ -4,9 +4,9 @@ import numpy as np
 from OpenGL.GL import *
 from pygame import Color
 
-from Control3DBase.Matrices import ModelMatrix
-from Control3DBase.Shaders import MeshShader
-from Control3DBase.utils.geometry import Vector3D, Vector2D, euler_from_vectors
+from oven_engine_3D.matrices import ModelMatrix
+from oven_engine_3D.shaders import MeshShader
+from oven_engine_3D.utils.geometry import Vector3D, Vector2D, euler_from_vectors
 
 CUBE_POSITION_ARRAY = np.array(
         # back

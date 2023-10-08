@@ -5,10 +5,10 @@ from OpenGL.GL import *
 from OpenGL.error import GLError
 from pygame import Color
 
-from Control3DBase.light import Light
-from Control3DBase.utils.geometry import Vector3D
+from oven_engine_3D.light import Light
+from oven_engine_3D.utils.geometry import Vector3D
 
-DEFAULT_SHADER_DIR = path.join("Control3DBase", "Shader Files")
+DEFAULT_SHADER_DIR = path.join("oven_engine_3D", "Shader Files")
 DEFAULT_VERTEX = "simple3D.vert"
 DEFAULT_FRAG = "simple3D.frag"
 
