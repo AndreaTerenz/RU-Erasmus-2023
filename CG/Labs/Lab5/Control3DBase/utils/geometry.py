@@ -493,7 +493,7 @@ def euler_from_vectors(normal_vector, up_vector=Vector3D.UP):
     # Calculate the right vector (U) using the cross product
     right_vector = normal_vector.cross(up_vector).normalized
 
-    pitch = np.arctan2(right_vector.x, right_vector.y)
+    pitch = -np.arctan2(right_vector.x, right_vector.y)
     yaw = np.arctan2(normal_vector.y, normal_vector.z)
     roll = np.arctan2(-normal_vector.x, normal_vector.yz.length)
 

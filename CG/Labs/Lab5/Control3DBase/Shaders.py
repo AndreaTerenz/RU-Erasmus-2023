@@ -13,6 +13,9 @@ DEFAULT_VERTEX = "simple3D.vert"
 DEFAULT_FRAG = "simple3D.frag"
 
 class Shader3D(ABC):
+    compiled_vert_shaders = {}
+    compile_frag_shaders = {}
+
     def __init__(self, vert_shader_path = None, frag_shader_path = None, shader_folder : str = None, halt_on_error = False):
         if vert_shader_path is None:
             vert_shader_path = DEFAULT_VERTEX
@@ -22,13 +25,26 @@ class Shader3D(ABC):
             shader_folder = DEFAULT_SHADER_DIR
 
         print("Compiling shaders...")
-        vert_shader = Shader3D.get_shader(vert_shader_path, GL_VERTEX_SHADER, shader_folder=shader_folder)
-        assert vert_shader != -1 or not halt_on_error, f"Couldn't load vertex shader '{vert_shader_path}'"
-        print(f"\tVertex shader {'ok' if vert_shader != -1 else 'failed'}")
 
-        frag_shader = Shader3D.get_shader(frag_shader_path, GL_FRAGMENT_SHADER, shader_folder=shader_folder)
-        assert frag_shader != -1 or not halt_on_error, f"Couldn't load fragment shader '{frag_shader_path}'"
-        print(f"\tFragment shader {'ok' if frag_shader != -1 else 'failed'}")
+        if vert_shader_path in Shader3D.compiled_vert_shaders:
+            vert_shader = Shader3D.compiled_vert_shaders[vert_shader_path]
+            print("\tVertex shader already compiled")
+        else:
+            vert_shader = Shader3D.compile_shader(vert_shader_path, GL_VERTEX_SHADER, shader_folder=shader_folder)
+
+            assert vert_shader != -1 or not halt_on_error, f"Couldn't load vertex shader '{vert_shader_path}'"
+            print(f"\tVertex shader {'ok' if vert_shader != -1 else 'failed'}")
+            Shader3D.compiled_vert_shaders[vert_shader_path] = vert_shader
+
+        if frag_shader_path in Shader3D.compile_frag_shaders:
+            frag_shader = Shader3D.compile_frag_shaders[frag_shader_path]
+            print("\tFrag shader already compiled")
+        else:
+            frag_shader = Shader3D.compile_shader(frag_shader_path, GL_FRAGMENT_SHADER, shader_folder=shader_folder)
+
+            assert frag_shader != -1 or not halt_on_error, f"Couldn't load fragment shader '{frag_shader_path}'"
+            print(f"\tFragment shader {'ok' if frag_shader != -1 else 'failed'}")
+            Shader3D.compile_frag_shaders[frag_shader_path] = frag_shader
 
         self.renderingProgramID = glCreateProgram()
 
@@ -38,10 +54,12 @@ class Shader3D(ABC):
         glAttachShader(self.renderingProgramID, frag_shader)
         glLinkProgram(self.renderingProgramID)
 
+        assert glGetProgramiv(self.renderingProgramID, GL_LINK_STATUS) == 1, print("Couldn't link program")
+
         self.uniform_locations = {}
 
     @staticmethod
-    def get_shader(shader_file: str, shader_type: int, use_fallback = True, shader_folder: str = ""):
+    def compile_shader(shader_file: str, shader_type: int, use_fallback = True, shader_folder: str = ""):
         if not shader_type in [GL_VERTEX_SHADER, GL_FRAGMENT_SHADER]:
             return -1
 
@@ -71,7 +89,7 @@ class Shader3D(ABC):
             elif shader_type == GL_FRAGMENT_SHADER:
                 fallback_path = path.join(DEFAULT_SHADER_DIR, DEFAULT_FRAG)
 
-            return Shader3D.get_shader(fallback_path, shader_type, False)
+            return Shader3D.compile_shader(fallback_path, shader_type, False)
 
         glCompileShader(shader_id)
         result = glGetShaderiv(shader_id, GL_COMPILE_STATUS)
@@ -192,7 +210,7 @@ class Shader3D(ABC):
 class MeshShader(Shader3D):
 
     def __init__(self, positions, normals,
-                 diffuse_color=(1., 1., 1.), specular_color=(.0, .0, .0), shininess=30.,
+                 diffuse_color=(1., 1., 1.), specular_color=(.2, .2, .2), shininess=30.,
                  unshaded=False, receive_ambient=True, halt_on_error = False):
         super().__init__("simple3D.vert", "simple3D.frag", halt_on_error=halt_on_error)
 
@@ -257,6 +275,9 @@ class MeshShader(Shader3D):
 
     def set_shininess(self, value: float):
         self.set_uniform_float(value, "u_shininess")
+
+    def set_time(self, value: float):
+        self.set_uniform_float(value, "u_time")
 
     @property
     def model_mat_name(self):

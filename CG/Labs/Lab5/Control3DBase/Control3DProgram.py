@@ -1,3 +1,4 @@
+from pygame.color import THECOLORS
 from pygame.locals import *
 
 from Control3DBase.Base3DObjects import Cube, Plane
@@ -9,9 +10,42 @@ from Control3DBase.utils.geometry import Vector3D, Vector2D
 from Control3DBase.utils.gl3d import draw_plane, PLANE_POSITION_ARRAY, PLANE_NORMAL_ARRAY
 
 
-# from OpenGL.GL import *
-# from OpenGL.GLU import *
+from OpenGL.GL import *
+from OpenGL.GLU import *
 
+
+def __str_to_col(col_name: str):
+    return Color(THECOLORS[col_name])
+
+
+def __points_colors(points: list[Vector2D], colors: [list[Color] | list[str] | str | Color] = None):
+    if type(colors) is str:
+        colors = [__str_to_col(colors)] * len(points)
+    elif type(colors) is Color:
+        colors = [colors] * len(points)
+    elif type(colors) is list:
+        if len(colors) > len(points):
+            colors = colors[:len(points)]
+        elif len(colors) < len(points):
+            colors += [colors[-1]] * (len(points) - len(colors))
+    else:
+        colors = None
+
+    if colors is None:
+        for p in points:
+            glVertex2f(p.x, p.y)
+    else:
+        for p, c in zip(points, colors):
+            if type(c) is str:
+                c = __str_to_col(c)
+            glColor3f(c.r / 255., c.g / 255., c.b / 255.)
+            glVertex2d(p.x, p.y)
+
+
+def draw_triangle(p1, p2, p3, colors: [list[Color] | Color] = None):
+    glBegin(GL_TRIANGLES)
+    __points_colors([p1, p2, p3], colors)
+    glEnd()
 
 class GraphicsProgram3D:
     def __init__(self,
@@ -34,7 +68,10 @@ class GraphicsProgram3D:
 
         ratio = self.win_size.aspect_ratio
 
-        self.ambient_color = ambient_color
+        self.ambient_color = ambient_color if ambient_color is not None else clear_color
+
+        self.clear_color = clear_color
+        glClearColor(*clear_color.normalize())
 
         self.camera = FPCamera(self, eye=Vector3D(-2., 1., 2.) * 5., look_at=Vector3D.ZERO, ratio=ratio, fov=fov, near=.5, far=100)
         self.light = Light(Vector3D(0., 0., 0.), (1., 1., 1.))
@@ -49,23 +86,24 @@ class GraphicsProgram3D:
         dist = 3.
         self.objects = [
             Plane(self, origin=Vector3D(0., -5., 0.), color=(.5, .5, .5), scale=Vector3D.ONE*10.),
-            Plane(self, origin=Vector3D(0., 5., -10.), color=(.5, .5, .5), normal=Vector3D.BACKWARD, scale=Vector3D.ONE*10.),
+            Plane(self, origin=Vector3D(0., 5., -10.), color=(.5, .5, .5), normal=Vector3D.FORWARD, scale=Vector3D.ONE*10.),
             Plane(self, origin=Vector3D(10., 5., 0.), color=(.5, .5, .5), normal=Vector3D.LEFT, scale=Vector3D.ONE*10.),
 
-            Cube(self, color=(1., 0., 0.), origin=dist * Vector3D.FORWARD),
-            Cube(self, color=(1., 0., 0.), origin=dist * Vector3D.BACKWARD),
-            Cube(self, color=(1., 1., 0.), origin=dist * Vector3D.RIGHT),
-            Cube(self, color=(0., 1., 1.), origin=dist * Vector3D.LEFT),
-            Cube(self, color=(0., 0., 1.), origin=dist * Vector3D.UP),
-            Cube(self, color=(0., 0., 1.), origin=dist * Vector3D.DOWN),
+            Cube(self, color=Color("blue"), origin=dist * Vector3D.FORWARD),
+            Cube(self, color=Color("blue"), origin=dist * Vector3D.BACKWARD),
+            Cube(self, color=Color("red"), origin=dist * Vector3D.RIGHT),
+            Cube(self, color=Color("red"), origin=dist * Vector3D.LEFT),
+            Cube(self, color=Color("green"), origin=dist * Vector3D.UP),
+            Cube(self, color=Color("green"), origin=dist * Vector3D.DOWN),
 
             self.light_cube,
         ]
 
-        self.clock = pg.time.Clock()
+        self.objects[4].rotate(math.tau/8.)
+        self.objects[6].rotate(math.tau/8.)
+        self.objects[8].rotate(math.tau/8.)
 
-        self.clear_color = clear_color
-        self.white_background = False
+        self.clock = pg.time.Clock()
         self.ticks = 0
 
         self.mouse_delta = Vector2D.ZERO
@@ -102,16 +140,15 @@ class GraphicsProgram3D:
 
     def display(self):
         #glEnable(GL_CULL_FACE)
-        glEnable(GL_DEPTH_TEST)  ### --- NEED THIS FOR NORMAL 3D BUT MANY EFFECTS BETTER WITH glDisable(GL_DEPTH_TEST) ... try it! --- ###
+        #glFrontFace(GL_CCW)
+        #glCullFace(GL_FRONT)
+        glEnable(GL_DEPTH_TEST)
 
-        if self.white_background:
-            glClearColor(1.0, 1.0, 1.0, 1.0)
-        else:
-            glClearColor(0.0, 0.0, 0.0, 1.0)
-        glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT)  ### --- YOU CAN ALSO CLEAR ONLY THE COLOR OR ONLY THE DEPTH --- ###
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
         glViewport(0, 0, self.win_size.x, self.win_size.y)
 
+        glColor3f(1.0, 1.0, 1.0)
         for obj in self.objects:
             obj.draw()
 

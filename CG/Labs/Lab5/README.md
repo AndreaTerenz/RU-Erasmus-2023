@@ -1,6 +1,6 @@
-## Lab 3/4
+## Lab 5
 
-This folder contains work done for Labs 3 and 4, since they are related
+This folder contains work done for Labs 5
 
 ### Running
 

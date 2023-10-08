@@ -66,7 +66,7 @@ class MeshEntity(Entity):
     def scale_by(self, factor):
         self.scale *= factor
 
-    def rotate(self, angle, axis):
+    def rotate(self, angle, axis=Vector3D.UP):
         self.rotation += angle * axis
 
     def to_global(self, local_pos: Vector3D):

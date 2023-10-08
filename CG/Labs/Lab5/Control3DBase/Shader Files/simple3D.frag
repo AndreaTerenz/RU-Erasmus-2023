@@ -3,7 +3,8 @@ uniform vec4 u_light_specular;
 uniform vec4 u_material_diffuse;
 uniform vec4 u_material_specular;
 uniform vec4 u_ambient;
-uniform float shininess;
+uniform float u_shininess;
+uniform float u_time;
 
 uniform bool receive_ambient;
 uniform bool unshaded;
@@ -21,7 +22,7 @@ vec4 compute_shaded_color()
 
 	vec4 h = (v + s) * .5;
 	float phong = max(0.0, dot(h, norm) / (length(h) * length(norm)));
-	float shininess = shininess;
+	float shininess = u_shininess;
 	vec4 specular = u_light_specular * u_material_specular * pow(phong, shininess);
 
 	return ambient + diffuse + specular;
