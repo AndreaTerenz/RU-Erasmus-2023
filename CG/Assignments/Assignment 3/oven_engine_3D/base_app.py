@@ -104,11 +104,11 @@ class BaseApp3D(ABC):
 
             self.mouse_delta *= 0.
             if event.type == pg.QUIT:
-                print("Quitting!")
+                print("Quitting")
                 return True
             elif event.type == pg.KEYDOWN:
                 if event.key == K_ESCAPE:
-                    print("Escaping!")
+                    print("Quitting")
                     return True
 
             if event.type in [pg.KEYDOWN, pg.KEYUP] and event.key in self.keys_states.keys():

@@ -40,32 +40,29 @@ CUBE_POSITION_ARRAY = np.array(
         [ 1,  1,  1],
         [ 1,  1, -1]])
 
-CUBE_NORMAL_ARRAY = np.array([list(Vector3D.FORWARD)*4,
-                              list(Vector3D.BACKWARD)*4,
-                              list(Vector3D.DOWN)*4,
-                              list(Vector3D.UP)*4,
-                              list(Vector3D.LEFT)*4,
-                              list(Vector3D.RIGHT)*4])
+CUBE_NORMAL_ARRAY = np.array([list(Vector3D.FORWARD)]*4+
+                              [list(Vector3D.BACKWARD)]*4+
+                              [list(Vector3D.DOWN)]*4+
+                              [list(Vector3D.UP)]*4+
+                              [list(Vector3D.LEFT)]*4+
+                              [list(Vector3D.RIGHT)]*4)
 
 PLANE_POSITION_ARRAY = np.array([[-1, 0, -1],
                                  [-1, 0,  1],
                                  [ 1, 0,  1],
                                  [ 1, 0, -1]])
-PLANE_NORMAL_ARRAY = np.array(list(Vector3D.UP)*4)
+PLANE_NORMAL_ARRAY = np.array([list(Vector3D.UP)]*4)
 
 def draw_cube(camera, light, shader,
               ambient_color = (1., 1., 1., 1.),
-              offset: Vector3D = Vector3D.ZERO, rotation: Vector3D = None, scale:Vector3D = None, model_matrix: ModelMatrix = None, set_poss_norms = True):
-    poss, norms = None, None
-    if set_poss_norms:
-        poss, norms = CUBE_POSITION_ARRAY, CUBE_NORMAL_ARRAY
+              offset: Vector3D = Vector3D.ZERO, rotation: Vector3D = None, scale:Vector3D = None, model_matrix: ModelMatrix = None):
 
-    draw_mesh(camera, light, shader, 4, 6, poss, norms, ambient_color, offset, scale, rotation, model_matrix)
+    draw_mesh(camera, light, shader, 4, 6, ambient_color, offset, scale, rotation, model_matrix)
 
 
 def draw_plane(camera, light, shader,
                ambient_color = (1., 1., 1., 1.),
-               normal = None, offset = Vector3D.ZERO, scale:[float|Vector2D] = 1., rotation: Vector3D = Vector3D.ZERO, model_matrix = None, set_poss_norms = True):
+               normal = None, offset = Vector3D.ZERO, scale:[float|Vector2D] = 1., rotation: Vector3D = Vector3D.ZERO, model_matrix = None):
     if model_matrix is None:
         if normal is not None:
             rotation = Vector3D(*euler_from_vectors(normal))
@@ -75,13 +72,9 @@ def draw_plane(camera, light, shader,
         else:
             scale = Vector3D(scale.x, 1., scale.y)
 
-    poss, norms = None, None
-    if set_poss_norms:
-        poss, norms = PLANE_POSITION_ARRAY, PLANE_NORMAL_ARRAY
+    draw_mesh(camera, light, shader, 4, 1, ambient_color, offset, scale, rotation, model_matrix)
 
-    draw_mesh(camera, light, shader, 4, 1, positions=poss, normals=norms, ambient_color=ambient_color, offset=offset, scale=scale, rotation=rotation, model_matrix=model_matrix)
-
-def draw_mesh(camera, light, shader, verts_per_face, face_count, positions=None, normals=None,
+def draw_mesh(camera, light, shader, verts_per_face, face_count,
               ambient_color = (1., 1., 1., 1.),
               offset: Vector3D = Vector3D.ZERO, scale:Vector3D = Vector3D.ONE, rotation: Vector3D = Vector3D.ZERO, model_matrix = None):
     if model_matrix is None:
@@ -89,17 +82,14 @@ def draw_mesh(camera, light, shader, verts_per_face, face_count, positions=None,
 
     shader.use()
 
-    if positions is not None:
-        shader.set_position_attribute(positions)
-    if normals is not None:
-        shader.set_normal_attribute(normals)
+    shader.set_attribute_buffers()
 
     shader.set_model_matrix(model_matrix)
-
     shader.set_camera_uniforms(camera)
     shader.set_light_uniforms(light)
-
     shader.set_ambient(ambient_color)
 
     for k in range(face_count):
         glDrawArrays(GL_TRIANGLE_FAN, k*verts_per_face, 4)
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0)

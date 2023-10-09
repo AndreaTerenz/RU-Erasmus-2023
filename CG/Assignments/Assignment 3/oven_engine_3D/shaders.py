@@ -1,8 +1,12 @@
 import os.path as path
+import sys
 from abc import ABC, abstractmethod
+from itertools import chain
 
+import OpenGL.GLUT
 import numpy as np
 from OpenGL.GL import *
+from OpenGL.GLU import *
 from OpenGL.error import GLError
 from pygame import Color
 
@@ -123,10 +127,14 @@ class Shader3D(ABC):
 
     def use(self):
         try:
+            self.on_use()
             glUseProgram(self.renderingProgramID)
         except OpenGL.error.GLError:
             print(glGetProgramInfoLog(self.renderingProgramID))
             raise
+
+    def on_use(self):
+        pass
 
     def get_uniform_loc(self, uniform_name):
         if uniform_name in self.uniform_locations:
@@ -227,44 +235,56 @@ class Shader3D(ABC):
 
 class MeshShader(Shader3D):
 
-    def __init__(self, positions, normals,
+    def __init__(self, positions=None, normals=None,
                  diffuse_color=(1., 1., 1.), specular_color=(.2, .2, .2), shininess=30.,
-                 unshaded=False, receive_ambient=True, halt_on_error = False):
+                 unshaded=False, receive_ambient=True, halt_on_error = False, vbo=0):
         super().__init__("simple3D.vert", "simple3D.frag", halt_on_error=halt_on_error)
 
-        self.current_pos = None
-        self.current_normals = None
+        assert (positions is None or normals is None) != (vbo == 0), "Must provide either positions and normals or a vbo"
 
         self.positionLoc = self.enable_attrib_array("a_position")
         self.normalLoc = self.enable_attrib_array("a_normal")
+
+        self.pos_vbo = vbo
+
+        if self.pos_vbo == 0:
+            tmp = [(*p,*n) for p,n in zip(positions, normals)]
+            tmp = list(chain.from_iterable(tmp))
+
+            self.pos_vbo = glGenBuffers(1)
+            glBindBuffer(GL_ARRAY_BUFFER, self.pos_vbo)
+            glBufferData(GL_ARRAY_BUFFER, np.array(tmp, dtype="float32"), GL_STATIC_DRAW)
+            glBindBuffer(GL_ARRAY_BUFFER, 0)
 
         self.unshaded = unshaded
         self.receive_ambient = receive_ambient
 
         self.use()
-        self.set_position_attribute(positions)
-        self.set_normal_attribute(normals)
         self.set_material_diffuse(diffuse_color)
         self.set_material_specular(specular_color)
         self.set_unshaded(unshaded)
         self.set_receive_ambient(receive_ambient)
         self.set_shininess(shininess)
 
-    def set_position_attribute(self, vertex_array):
-        v_a = vertex_array.flatten()
-        if self.current_pos is not None and np.array_equal(v_a, self.current_pos):
-            pass #return
+    def set_attribute_buffers(self):
+        values_per_attrib = 3
+        attribs_count = 6
+        attrib_size = sizeof(GLfloat)
 
-        self.current_pos = v_a
-        glVertexAttribPointer(self.positionLoc, 3, GL_FLOAT, False, 0, v_a)
+        def offset_to_size(offset, values = values_per_attrib, size = attrib_size):
+            return ctypes.c_void_p(offset * values * size)
 
-    def set_normal_attribute(self, vertex_array):
-        v_a = vertex_array.flatten()
-        if self.current_normals is not None and np.array_equal(v_a, self.current_normals):
-            pass #return
+        glBindBuffer(GL_ARRAY_BUFFER, self.pos_vbo)
 
-        self.current_normals = v_a
-        glVertexAttribPointer(self.normalLoc, 3, GL_FLOAT, False, 0, v_a)
+        pos_offset_size = offset_to_size(0)
+        glVertexAttribPointer(self.positionLoc, values_per_attrib, GL_FLOAT, False, attribs_count * attrib_size, pos_offset_size)
+
+        norm_offset_size = offset_to_size(1)
+        glVertexAttribPointer(self.normalLoc, values_per_attrib, GL_FLOAT, False, attribs_count * attrib_size, norm_offset_size)
+
+        # Pointless to unbind because this function will basically always
+        # precede a draw call where the vbo would get bound again anyway
+        #glBindBuffer(GL_ARRAY_BUFFER, 0)
 
     def set_camera_uniforms(self, camera: 'Camera'):
         super().set_camera_uniforms(camera)
