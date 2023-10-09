@@ -28,7 +28,6 @@ class Assignment3(BaseApp3D):
 
         ratio = self.win_size.aspect_ratio
         self.camera = FPCamera(self, eye=Vector3D(-2., 1., 2.) * 5., look_at=Vector3D.ZERO, ratio=ratio, fov=math.tau/6., near=.5, far=100)
-
         self.light = MovableLight(self, Vector3D.UP * 2., Color("white"))
 
         self.light_cube = Cube(self, color=self.light.color)

@@ -251,18 +251,20 @@ class MeshShader(Shader3D):
         self.set_shininess(shininess)
 
     def set_position_attribute(self, vertex_array):
-        if self.current_pos is not None and np.array_equal(vertex_array, self.current_pos):
+        v_a = vertex_array.flatten()
+        if self.current_pos is not None and np.array_equal(v_a, self.current_pos):
             pass #return
 
-        self.current_pos = vertex_array
-        glVertexAttribPointer(self.positionLoc, 3, GL_FLOAT, False, 0, vertex_array)
+        self.current_pos = v_a
+        glVertexAttribPointer(self.positionLoc, 3, GL_FLOAT, False, 0, v_a)
 
     def set_normal_attribute(self, vertex_array):
-        if self.current_normals is not None and np.array_equal(vertex_array, self.current_normals):
+        v_a = vertex_array.flatten()
+        if self.current_normals is not None and np.array_equal(v_a, self.current_normals):
             pass #return
 
-        self.current_normals = vertex_array
-        glVertexAttribPointer(self.normalLoc, 3, GL_FLOAT, False, 0, vertex_array)
+        self.current_normals = v_a
+        glVertexAttribPointer(self.normalLoc, 3, GL_FLOAT, False, 0, v_a)
 
     def set_camera_uniforms(self, camera: 'Camera'):
         super().set_camera_uniforms(camera)

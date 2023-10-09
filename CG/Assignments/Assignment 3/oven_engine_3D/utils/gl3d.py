@@ -10,40 +10,48 @@ from oven_engine_3D.utils.geometry import Vector3D, Vector2D, euler_from_vectors
 
 CUBE_POSITION_ARRAY = np.array(
         # back
-        [-1, -1, -1,
-         -1,  1, -1,
-          1,  1, -1,
-          1, -1, -1,
+        [[-1, -1, -1],
+         [-1,  1, -1],
+         [ 1,  1, -1],
+         [ 1, -1, -1],
         # front
-         -1, -1,  1,
-         -1,  1,  1,
-          1,  1,  1,
-          1, -1,  1,
+        [-1, -1,  1],
+        [-1,  1,  1],
+        [ 1,  1,  1],
+        [ 1, -1,  1],
         # bottom
-         -1, -1, -1,
-          1, -1, -1,
-          1, -1,  1,
-         -1, -1,  1,
+        [-1, -1, -1],
+        [ 1, -1, -1],
+        [ 1, -1,  1],
+        [-1, -1,  1],
         # top
-         -1,  1, -1,
-          1,  1, -1,
-          1,  1,  1,
-         -1,  1,  1,
+        [-1,  1, -1],
+        [ 1,  1, -1],
+        [ 1,  1,  1],
+        [-1,  1,  1],
         # left
-         -1, -1, -1,
-         -1, -1,  1,
-         -1,  1,  1,
-         -1,  1, -1,
+        [-1, -1, -1],
+        [-1, -1,  1],
+        [-1,  1,  1],
+        [-1,  1, -1],
         # right
-          1, -1, -1,
-          1, -1,  1,
-          1,  1,  1,
-          1,  1, -1])
+        [ 1, -1, -1],
+        [ 1, -1,  1],
+        [ 1,  1,  1],
+        [ 1,  1, -1]])
 
-CUBE_NORMAL_ARRAY = np.array([0.0, 0.0, 1.0]*4 + [0.0, 0.0, -1.0,]*4 + [0.0, -1.0, 0.0,]*4 + [0.0, 1.0, 0.0]*4+[-1.0, 0.0, 0.0]*4 + [1.0, 0.0, 0.0]*4)
+CUBE_NORMAL_ARRAY = np.array([list(Vector3D.FORWARD)*4,
+                              list(Vector3D.BACKWARD)*4,
+                              list(Vector3D.DOWN)*4,
+                              list(Vector3D.UP)*4,
+                              list(Vector3D.LEFT)*4,
+                              list(Vector3D.RIGHT)*4])
 
-PLANE_POSITION_ARRAY = np.array([-1, 0, -1, -1, 0, 1, 1, 0, 1, 1, 0, -1])
-PLANE_NORMAL_ARRAY = np.array([0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0])
+PLANE_POSITION_ARRAY = np.array([[-1, 0, -1],
+                                 [-1, 0,  1],
+                                 [ 1, 0,  1],
+                                 [ 1, 0, -1]])
+PLANE_NORMAL_ARRAY = np.array(list(Vector3D.UP)*4)
 
 def draw_cube(camera, light, shader,
               ambient_color = (1., 1., 1., 1.),
