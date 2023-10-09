@@ -43,7 +43,7 @@ class MeshEntity(Entity):
         self.model_matrix.add_scale(self.scale)
 
         if self.shader is not None:
-            self.shader.set_model_matrix(self.model_matrix.values)
+            self.shader.set_model_matrix(self.model_matrix)
 
     @abstractmethod
     def draw(self):
@@ -59,15 +59,19 @@ class MeshEntity(Entity):
 
     def translate(self, offset: Vector3D):
         self.origin += offset
+        return self
 
     def translate_to(self, position: Vector3D):
         self.origin = position
+        return self
 
     def scale_by(self, factor):
         self.scale *= factor
+        return self
 
     def rotate(self, angle, axis=Vector3D.UP):
         self.rotation += angle * axis
+        return self
 
     def to_global(self, local_pos: Vector3D):
         return self.model_matrix * local_pos

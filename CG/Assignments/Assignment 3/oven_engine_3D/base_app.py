@@ -41,15 +41,15 @@ class BaseApp3D(ABC):
 
         self.mouse_delta = Vector2D.ZERO
 
-        self.light_movement_keys = {
-            pg.K_k: Vector3D.FORWARD,
-            pg.K_i: Vector3D.BACKWARD,
-            pg.K_j: Vector3D.LEFT,
-            pg.K_l: Vector3D.RIGHT,
-            pg.K_u: Vector3D.UP,
-            pg.K_o: Vector3D.DOWN,
-        }
-        self.keys_states = {key: False for key in self.light_movement_keys.keys()}
+        self.keys = [
+            pg.K_k,
+            pg.K_i,
+            pg.K_j,
+            pg.K_l,
+            pg.K_u,
+            pg.K_o,
+        ]
+        self.keys_states = {key: False for key in self.keys}
 
         self.objects = []
 
@@ -58,6 +58,12 @@ class BaseApp3D(ABC):
         self.ticks += 1
 
         self.update(delta)
+
+        if self.light:
+            self.light.update(delta)
+
+        if self.camera:
+            self.camera.update(delta)
 
         for obj in self.objects:
             obj.update(delta)

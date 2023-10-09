@@ -18,6 +18,12 @@ class Matrix(ABC):
         self.rows = rows
         self.cols = cols
 
+    def __eq__(self, other):
+        if not isinstance(other, Matrix):
+            return False
+
+        return np.array_equal(self._matrix, other._matrix)
+
     @property
     def identity(self):
         return np.eye(self.rows, self.cols).flatten()

@@ -25,7 +25,7 @@ vec4 compute_shaded_color()
 	float shininess = u_shininess;
 	vec4 specular = u_light_specular * u_material_specular * pow(phong, shininess);
 
-	return ambient + diffuse + specular;
+	return ambient + diffuse; // + specular;
 }
 
 void main(void)

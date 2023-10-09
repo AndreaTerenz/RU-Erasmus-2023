@@ -47,6 +47,25 @@ class AbstractVector(ABC):
     def __getitem__(self, item):
         return self.components[item]
 
+    def __getattribute__(self, item: str):
+        if len(item) in [2,3]:
+            comps = {
+                "x": self[0],
+                "y": self[1],
+                "0": 0.,
+            }
+
+            if self.components_count >= 3:
+                comps.update({"z": self[2]})
+
+            if all(item[i] in comps for i in range(len(item))):
+                if len(item) == 2:
+                    return Vector2D(comps[item[0]], comps[item[1]])
+                elif len(item) == 3:
+                    return Vector3D(comps[item[0]], comps[item[1]], comps[item[2]])
+
+        return super().__getattribute__(item)
+
     def __iter__(self):
         return iter(self.components)
 
@@ -347,23 +366,6 @@ class Vector3D(AbstractVector):
             self.x, self.y, self.z = x, y, z
 
         super().__init__([self.x, self.y, self.z])
-
-    def __getattribute__(self, item: str):
-        if len(item) in [2,3]:
-            comps = {
-                "x": self.x,
-                "y": self.y,
-                "z": self.z,
-                "0": 0.,
-            }
-
-            if all(item[i] in comps for i in range(len(item))):
-                if len(item) == 2:
-                    return Vector2D(comps[item[0]], comps[item[1]])
-                elif len(item) == 3:
-                    return Vector3D(comps[item[0]], comps[item[1]], comps[item[2]])
-
-        return super().__getattribute__(item)
 
     @staticmethod
     def from_Vector2D(vec: Vector2D):

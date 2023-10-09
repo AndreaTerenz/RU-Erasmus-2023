@@ -38,7 +38,7 @@ CUBE_POSITION_ARRAY = np.array(
           1, -1, -1,
           1, -1,  1,
           1,  1,  1,
-          1,  1, -1])*.5
+          1,  1, -1])
 
 CUBE_NORMAL_ARRAY = np.array([0.0, 0.0, 1.0]*4 + [0.0, 0.0, -1.0,]*4 + [0.0, -1.0, 0.0,]*4 + [0.0, 1.0, 0.0]*4+[-1.0, 0.0, 0.0]*4 + [1.0, 0.0, 0.0]*4)
 
@@ -86,7 +86,7 @@ def draw_mesh(camera, light, shader, verts_per_face, face_count, positions=None,
     if normals is not None:
         shader.set_normal_attribute(normals)
 
-    shader.set_model_matrix(model_matrix.values)
+    shader.set_model_matrix(model_matrix)
 
     shader.set_camera_uniforms(camera)
     shader.set_light_uniforms(light)
