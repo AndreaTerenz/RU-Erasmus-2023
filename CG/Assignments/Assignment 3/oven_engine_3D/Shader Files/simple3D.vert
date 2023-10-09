@@ -7,15 +7,25 @@ uniform mat4 u_projection_matrix;
 uniform vec4 u_camera_position;
 uniform vec4 u_light_position;
 
+//varying vec4 v_pos;
 varying vec4 v_color;
 varying vec4 s, v, h;
 varying vec4 norm;
+
+float remap(float v, float old_min, float old_max, float new_min, float new_max) {
+	return (((v - old_min) * (new_max - new_min)) / (old_max - old_min)) + new_min;
+}
 
 void main(void)
 {
 	vec4 position = vec4(a_position, 1.0);
 	vec4 normal = vec4(a_normal, 0.0);
-
+	/*
+	v_pos = position;
+	v_pos.x = remap(v_pos.x, -1.0, 1.0, 0.0, 1.0);
+	v_pos.y = remap(v_pos.y, -1.0, 1.0, 0.0, 1.0);
+	v_pos.z = remap(v_pos.z, -1.0, 1.0, 0.0, 1.0);
+*/
 	position = u_model_matrix * position;
 	normal = u_model_matrix * normal;
 
@@ -23,7 +33,6 @@ void main(void)
 	v = u_camera_position - position;
 	norm = normalize(normal);
 
-	//v_color = compute_shaded_color();
 	position = u_projection_matrix * (u_view_matrix * position);
 
 	gl_Position = position;

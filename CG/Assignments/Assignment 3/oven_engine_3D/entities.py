@@ -12,41 +12,21 @@ from oven_engine_3D.utils.gl3d import CUBE_POSITION_ARRAY, CUBE_NORMAL_ARRAY, dr
 
 
 class Entity(ABC):
-    def __init__(self, parent_app, origin = Vector3D.ZERO):
+    def __init__(self, parent_app, origin=Vector3D.ZERO, rotation=Vector3D.ZERO, scale=Vector3D.ONE):
         self.parent_app = parent_app
         self.origin = origin
-
-    def update(self, delta):
-        self._update(delta)
-
-    @abstractmethod
-    def _update(self, delta):
-        pass
-
-    @abstractmethod
-    def handle_event(self, ev):
-        pass
-
-class MeshEntity(Entity):
-    def __init__(self, parent_app, origin = Vector3D.ZERO, rotation = Vector3D.ZERO, scale = Vector3D.ONE, shader=None):
-        super().__init__(parent_app, origin)
-
         self.rotation = rotation
         self.scale = scale
         self.model_matrix = ModelMatrix.from_transformations(origin, rotation, scale)
-        self.shader = shader
 
     def update_model_matrix(self):
         self.model_matrix.load_identity()
         self.model_matrix.add_translation(self.origin)
         self.model_matrix.add_rotation(self.rotation)
         self.model_matrix.add_scale(self.scale)
+        self.modelmat_update()
 
-        if self.shader is not None:
-            self.shader.set_model_matrix(self.model_matrix)
-
-    @abstractmethod
-    def draw(self):
+    def modelmat_update(self):
         pass
 
     def update(self, delta):
@@ -76,14 +56,37 @@ class MeshEntity(Entity):
     def to_global(self, local_pos: Vector3D):
         return self.model_matrix * local_pos
 
-    #TODO: Requires computing inverse of model matrix...
+    # TODO: Requires computing inverse of model matrix...
     """def to_local(self, global_pos: Vector3D):
         return self.model_matrix.inverse() * global_pos"""
+
+    @abstractmethod
+    def _update(self, delta):
+        pass
+
+    @abstractmethod
+    def handle_event(self, ev):
+        pass
+
+
+class MeshEntity(Entity):
+    def __init__(self, parent_app, origin=Vector3D.ZERO, rotation=Vector3D.ZERO, scale=Vector3D.ONE, shader=None):
+        super().__init__(parent_app, origin, rotation, scale)
+
+        self.shader = shader
+
+    def modelmat_update(self):
+        if self.shader is not None:
+            self.shader.set_model_matrix(self.model_matrix)
+
+    @abstractmethod
+    def draw(self):
+        pass
 
 
 class Cube(MeshEntity):
 
-    def __init__(self, parent_app, origin = Vector3D.ZERO, color=(1.0, 0.0, 1.0), shader=None):
+    def __init__(self, parent_app, origin=Vector3D.ZERO, color=(1.0, 0.0, 1.0), shader=None):
         if shader is None:
             shader = MeshShader(positions=CUBE_POSITION_ARRAY, normals=CUBE_NORMAL_ARRAY, diffuse_color=color)
 
@@ -93,7 +96,8 @@ class Cube(MeshEntity):
         light = self.parent_app.light
         camera = self.parent_app.camera
 
-        draw_cube(camera=camera, light=light, ambient_color=self.parent_app.ambient_color, model_matrix=self.model_matrix, shader=self.shader)
+        draw_cube(camera=camera, light=light, ambient_color=self.parent_app.ambient_color,
+                  model_matrix=self.model_matrix, shader=self.shader)
 
     def handle_event(self, ev):
         pass
@@ -101,8 +105,10 @@ class Cube(MeshEntity):
     def _update(self, delta):
         pass
 
+
 class Plane(MeshEntity):
-    def __init__(self, parent_app, origin = Vector3D.ZERO, color=(1.0, 0.0, 1.0), normal=Vector3D.UP, scale = Vector3D.ONE, shader=None):
+    def __init__(self, parent_app, origin=Vector3D.ZERO, color=(1.0, 0.0, 1.0), normal=Vector3D.UP, scale=Vector3D.ONE,
+                 shader=None):
         rotation = Vector3D(*euler_from_vectors(normal))
         if shader is None:
             shader = MeshShader(positions=PLANE_POSITION_ARRAY, normals=PLANE_NORMAL_ARRAY, diffuse_color=color)
@@ -127,4 +133,3 @@ class Plane(MeshEntity):
 
     def handle_event(self, ev):
         pass
-

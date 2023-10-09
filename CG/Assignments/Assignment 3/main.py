@@ -4,8 +4,9 @@ import numpy as np
 
 from pygame import Color
 
+from game_entities import Player
 from oven_engine_3D.base_app import BaseApp3D
-from oven_engine_3D.camera import FPCamera, Camera
+from oven_engine_3D.camera import FPCamera
 from oven_engine_3D.entities import Cube, Plane
 from oven_engine_3D.light import Light, MovableLight
 from oven_engine_3D.shaders import MeshShader
@@ -24,21 +25,17 @@ def read_maze(file_path = "test.maze"):
     # convert maze to numpy array
     return np.array([list(line) for line in lines], dtype=np.int8)
 
-def check_gl_error():
-    error = glGetError()
-    if error != GL_NO_ERROR:
-        error_str = gluErrorString(error).decode('utf-8')
-        print(f"OpenGL error ({error}): {error_str}")
-
-    return error
-
 class Assignment3(BaseApp3D):
     def __init__(self):
-        super().__init__(fullscreen=True, ambient_color=Color("red"))
+        super().__init__(fullscreen=True, ambient_color=Color("red"),update_camera=False)
+
+        self.maze = read_maze()
 
         ratio = self.win_size.aspect_ratio
+        self.player = Player(self, camera_params={"ratio": ratio, "fov": math.tau/6., "near": .5, "far": 100.})
+        self.camera = self.player.camera
+
         self.light = MovableLight(self, Vector3D.UP * 2., Color("white"))
-        self.camera = FPCamera(self, eye=Vector3D(-2., 1., 2.) * 5., look_at=Vector3D.ZERO, ratio=ratio, fov=math.tau/6., near=.5, far=100)
 
         self.light_cube = Cube(self, color=self.light.color)
         self.light_cube.scale_by(.1)
@@ -47,24 +44,24 @@ class Assignment3(BaseApp3D):
 
         self.objects = [self.light_cube]
 
-        maze = read_maze()
+        self.maze = read_maze()
 
         yellow_mat = MeshShader(positions=PLANE_POSITION_ARRAY, normals=PLANE_NORMAL_ARRAY,
                                 diffuse_color=Color("yellow"))
         blue_mat   = MeshShader(diffuse_color=Color("blue"), vbo=yellow_mat.pos_vbo)
-        center = Vector2D(*maze.shape).yx
+        center = Vector2D(*self.maze.shape).yx
 
         # Create a Plane for each wall in the maze
-        for i in range(maze.shape[0]):
-            for j in range(maze.shape[1]):
-                shader = blue_mat if maze[i][j] == 1 else yellow_mat
+        for i in range(self.maze.shape[0]):
+            for j in range(self.maze.shape[1]):
+                shader = blue_mat if self.maze[i][j] == 1 else yellow_mat
                 pos = Vector2D(j, i)*2 - center
 
                 plane = Plane(self, origin=pos.x0y, shader=shader, scale=Vector3D.ONE)
                 self.objects.append(plane)
 
-
     def update(self, delta):
+        self.player.update(delta)
         self.light_cube.translate_to(self.light.origin)
 
     def display(self):

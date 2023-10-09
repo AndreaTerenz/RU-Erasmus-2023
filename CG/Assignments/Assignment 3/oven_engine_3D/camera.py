@@ -19,6 +19,8 @@ class Camera(Entity):
         self.view_matrix = ViewMatrix()
         self.target = Vector3D.ZERO
 
+        look_at = self.to_global(look_at)
+
         self.look_at(look_at, up_vec)
 
     def _update(self, delta):
@@ -116,11 +118,12 @@ class FPCamera(Camera):
     MOUSE = 1
 
     def __init__(self, parent_app, sensitivity = 50., mode=MOUSE,
-                 eye = Vector3D.ZERO, look_at = Vector3D.FORWARD, up_vec=Vector3D.UP,
+                 eye = Vector3D.ZERO, look_at = Vector3D.FORWARD, up_vec=Vector3D.UP, speed=5.,
                  fov =math.tau / 8., ratio =16. / 9., near=.5, far=100):
         super().__init__(parent_app, eye, look_at, up_vec, fov, ratio, near, far)
 
         self.sensitivity = sensitivity
+        self.speed = speed
         self.mode = mode
 
         if self.mode == FPCamera.MOUSE:
@@ -169,7 +172,7 @@ class FPCamera(Camera):
         if slide_dir != Vector3D.ZERO:
             slide_dir = slide_dir.rotate(Vector3D.UP, self.y_rot)
 
-            offset = (slide_dir * delta * 4.)
+            offset = (slide_dir * delta * self.speed)
 
             self.view_matrix.eye += offset
 

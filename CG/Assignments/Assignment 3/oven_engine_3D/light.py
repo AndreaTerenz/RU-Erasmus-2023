@@ -4,7 +4,6 @@ from oven_engine_3D.utils.geometry import Vector3D
 
 
 class Light(Entity):
-
     def __init__(self, parent_app, position, color):
         super().__init__(parent_app, origin=position)
 

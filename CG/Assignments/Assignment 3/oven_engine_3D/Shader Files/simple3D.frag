@@ -9,6 +9,7 @@ uniform float u_time;
 uniform bool receive_ambient;
 uniform bool unshaded;
 
+//varying vec4 v_pos;
 varying vec4 v_color;
 varying vec4 s, v, h;
 varying vec4 norm;

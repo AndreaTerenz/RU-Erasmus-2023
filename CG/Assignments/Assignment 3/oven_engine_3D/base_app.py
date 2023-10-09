@@ -14,6 +14,7 @@ class BaseApp3D(ABC):
                  clear_color = Color("black"),
                  fullscreen  = True,
                  ambient_color = None,
+                 update_camera = True,
                  ):
 
         pg.init()
@@ -34,6 +35,7 @@ class BaseApp3D(ABC):
         glClearColor(*clear_color.normalize())
 
         self.camera = None
+        self.update_camera = update_camera
         self.light = None
 
         self.clock = pg.time.Clock()
@@ -62,7 +64,7 @@ class BaseApp3D(ABC):
         if self.light:
             self.light.update(delta)
 
-        if self.camera:
+        if self.camera and self.update_camera:
             self.camera.update(delta)
 
         for obj in self.objects:

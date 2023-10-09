@@ -1,5 +1,4 @@
 import os.path as path
-import sys
 from abc import ABC, abstractmethod
 from itertools import chain
 
@@ -42,25 +41,29 @@ class Shader3D(ABC):
 
         print("Compiling shaders...")
 
-        if vert_shader_path in Shader3D.compiled_vert_shaders:
-            vert_shader = Shader3D.compiled_vert_shaders[vert_shader_path]
+        self.vert_path = vert_shader_path
+        self.frag_path = frag_shader_path
+        self.src_dir = shader_folder
+
+        if self.vert_path in Shader3D.compiled_vert_shaders:
+            vert_shader = Shader3D.compiled_vert_shaders[self.vert_path]
             print("\tVertex shader already compiled")
         else:
-            vert_shader = Shader3D.compile_shader(vert_shader_path, GL_VERTEX_SHADER, shader_folder=shader_folder)
+            vert_shader = Shader3D.compile_shader(self.vert_path, GL_VERTEX_SHADER, shader_folder=self.src_dir)
 
-            assert vert_shader != -1 or not halt_on_error, f"Couldn't load vertex shader '{vert_shader_path}'"
+            assert vert_shader != -1 or not halt_on_error, f"Couldn't load vertex shader '{self.vert_path}'"
             print(f"\tVertex shader {'ok' if vert_shader != -1 else 'failed'}")
-            Shader3D.compiled_vert_shaders[vert_shader_path] = vert_shader
+            Shader3D.compiled_vert_shaders[self.vert_path] = vert_shader
 
-        if frag_shader_path in Shader3D.compile_frag_shaders:
-            frag_shader = Shader3D.compile_frag_shaders[frag_shader_path]
+        if self.frag_path in Shader3D.compile_frag_shaders:
+            frag_shader = Shader3D.compile_frag_shaders[self.frag_path]
             print("\tFrag shader already compiled")
         else:
-            frag_shader = Shader3D.compile_shader(frag_shader_path, GL_FRAGMENT_SHADER, shader_folder=shader_folder)
+            frag_shader = Shader3D.compile_shader(self.frag_path, GL_FRAGMENT_SHADER, shader_folder=self.src_dir)
 
-            assert frag_shader != -1 or not halt_on_error, f"Couldn't load fragment shader '{frag_shader_path}'"
+            assert frag_shader != -1 or not halt_on_error, f"Couldn't load fragment shader '{self.frag_path}'"
             print(f"\tFragment shader {'ok' if frag_shader != -1 else 'failed'}")
-            Shader3D.compile_frag_shaders[frag_shader_path] = frag_shader
+            Shader3D.compile_frag_shaders[self.frag_path] = frag_shader
 
         self.renderingProgramID = glCreateProgram()
 
@@ -127,14 +130,10 @@ class Shader3D(ABC):
 
     def use(self):
         try:
-            self.on_use()
             glUseProgram(self.renderingProgramID)
         except OpenGL.error.GLError:
             print(glGetProgramInfoLog(self.renderingProgramID))
             raise
-
-    def on_use(self):
-        pass
 
     def get_uniform_loc(self, uniform_name):
         if uniform_name in self.uniform_locations:
