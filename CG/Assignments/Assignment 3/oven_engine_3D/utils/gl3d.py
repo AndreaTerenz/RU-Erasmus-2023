@@ -38,7 +38,7 @@ CUBE_POSITION_ARRAY = np.array(
         [ 1, -1, -1],
         [ 1, -1,  1],
         [ 1,  1,  1],
-        [ 1,  1, -1]])
+        [ 1,  1, -1]])*.5
 
 CUBE_NORMAL_ARRAY = np.array([list(Vector3D.FORWARD)]*4+
                               [list(Vector3D.BACKWARD)]*4+
@@ -50,7 +50,7 @@ CUBE_NORMAL_ARRAY = np.array([list(Vector3D.FORWARD)]*4+
 PLANE_POSITION_ARRAY = np.array([[-1, 0, -1],
                                  [-1, 0,  1],
                                  [ 1, 0,  1],
-                                 [ 1, 0, -1]])
+                                 [ 1, 0, -1]])*.5
 PLANE_NORMAL_ARRAY = np.array([list(Vector3D.UP)]*4)
 
 def draw_cube(camera, light, shader,

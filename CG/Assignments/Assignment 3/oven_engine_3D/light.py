@@ -4,7 +4,7 @@ from oven_engine_3D.utils.geometry import Vector3D
 
 
 class Light(Entity):
-    def __init__(self, parent_app, position, color, radius=10.):
+    def __init__(self, parent_app, position, color, radius=0.):
         super().__init__(parent_app, origin=position)
 
         self.color = color
@@ -17,8 +17,8 @@ class Light(Entity):
         pass
 
 class MovableLight(Light):
-    def __init__(self, parent_app, position, color):
-        super().__init__(parent_app, position, color)
+    def __init__(self, parent_app, position, color, radius=0.):
+        super().__init__(parent_app, position, color, radius=radius)
 
         self.keys_to_dir = {
             pg.K_k: Vector3D.FORWARD,

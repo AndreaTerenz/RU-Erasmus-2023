@@ -114,18 +114,16 @@ class BaseApp3D(ABC):
 
     def _handle_events(self):
         for event in pg.event.get():
+            if self.check_quit(event):
+                return True
 
             self.mouse_delta *= 0.
-            if event.type == pg.QUIT:
-                print("Quitting")
-                return True
-            elif event.type == pg.KEYDOWN:
-                if event.key == K_ESCAPE:
-                    print("Quitting")
-                    return True
 
             if event.type in [pg.KEYDOWN, pg.KEYUP] and event.key in self.keys_states.keys():
                 self.keys_states[event.key] = (event.type == pg.KEYDOWN)
+            elif event.type == pg.MOUSEMOTION:
+                self.mouse_delta = Vector2D(event.rel) / self.win_size
+                self.mouse_delta = self.mouse_delta.snap(.005)
 
             if self.handle_event(event):
                 return True
@@ -133,6 +131,17 @@ class BaseApp3D(ABC):
             for obj in self.objects:
                 if obj.handle_event(event):
                     return True
+
+        return False
+
+    def check_quit(self, event):
+        if event.type == pg.QUIT:
+            print("Quitting")
+            return True
+        elif event.type == pg.KEYDOWN:
+            if event.key == K_ESCAPE:
+                print("Quitting")
+                return True
 
         return False
 

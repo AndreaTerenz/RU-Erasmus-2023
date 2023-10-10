@@ -16,8 +16,16 @@ varying vec4 s, v, h;
 varying vec4 norm;
 varying float dist;
 
+vec4 snapvec4(vec4 v, float s)
+{
+	return vec4(floor(v.x / s) * s, floor(v.y / s) * s, floor(v.z / s) * s, floor(v.w / s) * s);
+}
+
 vec4 compute_shaded_color()
 {
+	if (u_light_radius > 0. && dist > u_light_radius)
+		return vec4(0., 0., 0., 1.);
+
 	vec4 ambient = (u_ambient * float(receive_ambient) * .1);
 
 	float lambert = max(0.0, dot(s, norm) / (length(s) * length(norm)));
@@ -28,7 +36,7 @@ vec4 compute_shaded_color()
 	float shininess = u_shininess;
 	vec4 specular = u_light_specular * u_material_specular * pow(phong, shininess);
 
-	float dist_factor = max(0., 1.0 - min(dist / u_light_radius, 1.0));
+	float dist_factor = u_light_radius <= 0. ? 1. : max(0., 1.0 - min(dist / u_light_radius, 1.0));
 
 	return (ambient + diffuse + specular) * dist_factor;
 }

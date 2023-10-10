@@ -111,8 +111,17 @@ class AbstractVector(ABC):
         if type(other) in [int, float]:
             other = self.from_values([other for _ in range(self.components_count)])
 
-        if type(other) is Vector2D:
+        if type(other) == type(self):
             return self.from_values([c1 / c2 for c1, c2 in zip(self.components, other.components)])
+
+        return self
+
+    def __floordiv__(self, other):
+        if type(other) in [int, float]:
+            other = self.from_values([other for _ in range(self.components_count)])
+
+        if type(other) == type(self):
+            return self.from_values([c1 // c2 for c1, c2 in zip(self.components, other.components)])
 
         return self
 
