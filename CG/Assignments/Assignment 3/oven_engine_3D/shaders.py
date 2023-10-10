@@ -326,9 +326,9 @@ class MeshShader(Shader3D):
     def set_shininess(self, value: float):
         self.set_uniform_float(value, "u_shininess")
 
-    def set_time(self, value: float):
+    """def set_time(self, value: float):
         self.set_uniform_float(value, "u_time")
-
+    """
     @property
     def model_mat_name(self):
         return "u_model_matrix"

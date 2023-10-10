@@ -4,7 +4,6 @@ from oven_engine_3D.shaders import *
 from oven_engine_3D.camera import *
 from oven_engine_3D.utils.geometry import Vector3D, Vector2D
 
-
 from OpenGL.GL import *
 
 class BaseApp3D(ABC):
@@ -54,18 +53,29 @@ class BaseApp3D(ABC):
         self.keys_states = {key: False for key in self.keys}
 
         self.objects = []
+        self.avg_fps = 0.
+        self.target_fps = 60.
 
     def _update(self):
-        delta = self.clock.tick(60.) / 1000.0
+        delta = self.clock.tick(self.target_fps) / 1000.0
         self.ticks += 1
 
+        fps = 1. / delta
+        self.avg_fps += fps
+        self.ticks += 1
+
+        if self.ticks % 10 == 0:
+            self.avg_fps /= 10
+            fps_target_ratio = self.avg_fps / self.target_fps
+
+            fps_str = f"FPS: {fps:.2f} ({fps_target_ratio * 100:.2f}% of target)"
+            #pg.display.set_caption(f"{self.win_title} | {fps_str}")
+
+            self.avg_fps = 0.
+
+            #print(fps_str)
+
         self.update(delta)
-
-        if self.light:
-            self.light.update(delta)
-
-        if self.camera and self.update_camera:
-            self.camera.update(delta)
 
         for obj in self.objects:
             obj.update(delta)
@@ -82,7 +92,8 @@ class BaseApp3D(ABC):
         self.display()
 
         for obj in self.objects:
-            obj.draw()
+            if hasattr(obj, 'draw'):
+                obj.draw()
 
         pg.display.flip()
 
@@ -119,11 +130,23 @@ class BaseApp3D(ABC):
             if self.handle_event(event):
                 return True
 
+            for obj in self.objects:
+                if obj.handle_event(event):
+                    return True
+
         return False
 
     @abstractmethod
     def handle_event(self, event):
         return False
+
+    def add_keys(self, keycodes):
+        for keycode in keycodes:
+            if not keycode in self.keys_states.keys():
+                self.keys_states[keycode] = False
+
+    def is_key_pressed(self, keycode):
+        return self.keys_states.get(keycode, False)
 
     def get_mouse_pos(self):
         return Vector2D(pg.mouse.get_pos()) / self.win_size - Vector2D(0.5, 0.5)

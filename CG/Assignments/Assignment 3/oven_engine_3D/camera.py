@@ -138,43 +138,22 @@ class FPCamera(Camera):
         h_dir = eye.direction_to(look_at)
         self.y_rot = math.atan2(h_dir.x, h_dir.z)
 
-        self.slide_keys = {
-            pg.K_w: Vector3D.FORWARD,
-            pg.K_s: Vector3D.BACKWARD,
-            pg.K_a: Vector3D.RIGHT,
-            pg.K_d: Vector3D.LEFT,
-            pg.K_LSHIFT: Vector3D.UP,
-            pg.K_LCTRL: Vector3D.DOWN,
-        }
-
         self.rotation_keys = [
             # Pitch          # Turn
             pg.K_i, pg.K_k, pg.K_j, pg.K_l
         ]
 
-        self.keys_states = {key: False for key in
-                            list(self.slide_keys.keys()) +
-                            self.rotation_keys}
+        self.parent_app.add_keys(self.rotation_keys)
 
     def _update(self, delta):
         self.pitch(delta)
         self.turn(delta)
-        self.move(delta)
 
-    def move(self, delta):
-        slide_dir = Vector3D.ZERO
-        for key, _dir in self.slide_keys.items():
-            state = self.keys_states[key]
-            fact = 1. if state else 0.
-            slide_dir += _dir * fact
+    def translate(self, offset: Vector3D):
+        super().translate(offset)
+        self.view_matrix.eye += offset
 
-        slide_dir = slide_dir.normalized
-        if slide_dir != Vector3D.ZERO:
-            slide_dir = slide_dir.rotate(Vector3D.UP, self.y_rot)
-
-            offset = (slide_dir * delta * self.speed)
-
-            self.view_matrix.eye += offset
+        return self
 
     def pitch(self, delta):
         if self.mode == FPCamera.MOUSE:
@@ -183,9 +162,9 @@ class FPCamera(Camera):
                 self.view_matrix.rotate_x(m_delta.y * delta * self.sensitivity)
         elif self.mode == FPCamera.KEYBOARD:
             _pitch = 0.
-            if self.keys_states[pg.K_i]:
+            if self.parent_app.is_key_pressed(pg.K_i):
                 _pitch = 1.
-            elif self.keys_states[pg.K_k]:
+            elif self.parent_app.is_key_pressed(pg.K_k):
                 _pitch = -1.
 
             if _pitch != 0.:
@@ -201,22 +180,18 @@ class FPCamera(Camera):
                 angle = -m_delta.x * delta * self.sensitivity
         elif self.mode == FPCamera.KEYBOARD:
             _turn = 0.
-            if self.keys_states[pg.K_j]:
+            if self.parent_app.is_key_pressed(pg.K_j):
                 _turn = 1.
-            elif self.keys_states[pg.K_l]:
+            elif self.parent_app.is_key_pressed(pg.K_l):
                 _turn = -1.
 
             if _turn != 0.:
-                angle = _turn * delta * math.tau / 10.
+                angle = _turn * delta * math.tau / 8.
 
         if angle != 0.:
             self.view_matrix.rotate_global_y(angle)
             self.y_rot += angle
 
     def handle_event(self, event):
-        if not (hasattr(event, 'key')):
-            return
-
-        if event.key in self.keys_states.keys():
-            self.keys_states[event.key] = (event.type == pg.KEYDOWN)
+        pass
 

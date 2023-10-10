@@ -86,11 +86,11 @@ class MeshEntity(Entity):
 
 class Cube(MeshEntity):
 
-    def __init__(self, parent_app, origin=Vector3D.ZERO, color=(1.0, 0.0, 1.0), shader=None):
+    def __init__(self, parent_app, origin=Vector3D.ZERO, rotation=Vector3D.ZERO, scale=Vector3D.ONE, color=(1.0, 0.0, 1.0), shader=None):
         if shader is None:
             shader = MeshShader(positions=CUBE_POSITION_ARRAY, normals=CUBE_NORMAL_ARRAY, diffuse_color=color)
 
-        super().__init__(parent_app, origin, shader=shader)
+        super().__init__(parent_app, origin, rotation=rotation, scale=scale, shader=shader)
 
     def draw(self):
         light = self.parent_app.light

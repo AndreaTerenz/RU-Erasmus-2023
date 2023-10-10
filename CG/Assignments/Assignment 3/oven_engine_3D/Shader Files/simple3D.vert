@@ -20,17 +20,13 @@ void main(void)
 {
 	vec4 position = vec4(a_position, 1.0);
 	vec4 normal = vec4(a_normal, 0.0);
-	/*
-	v_pos = position;
-	v_pos.x = remap(v_pos.x, -1.0, 1.0, 0.0, 1.0);
-	v_pos.y = remap(v_pos.y, -1.0, 1.0, 0.0, 1.0);
-	v_pos.z = remap(v_pos.z, -1.0, 1.0, 0.0, 1.0);
-*/
+
 	position = u_model_matrix * position;
 	normal = u_model_matrix * normal;
 
 	s = u_light_position - position;
 	v = u_camera_position - position;
+	dist = distance(u_light_position, position);
 	norm = normalize(normal);
 
 	position = u_projection_matrix * (u_view_matrix * position);

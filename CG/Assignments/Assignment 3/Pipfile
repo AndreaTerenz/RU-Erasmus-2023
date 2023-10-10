@@ -9,6 +9,7 @@ pygame = "*"
 shortuuid = "*"
 pillow = "*"
 numpy = "*"
+glfw = "*"
 
 [requires]
 python_version = "3.11"

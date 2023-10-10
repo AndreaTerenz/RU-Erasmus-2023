@@ -8,10 +8,9 @@ from game_entities import Player
 from oven_engine_3D.base_app import BaseApp3D
 from oven_engine_3D.camera import FPCamera
 from oven_engine_3D.entities import Cube, Plane
-from oven_engine_3D.light import Light, MovableLight
 from oven_engine_3D.shaders import MeshShader
 from oven_engine_3D.utils.geometry import Vector3D, Vector2D
-from oven_engine_3D.utils.gl3d import PLANE_POSITION_ARRAY, PLANE_NORMAL_ARRAY
+from oven_engine_3D.utils.gl3d import PLANE_POSITION_ARRAY, PLANE_NORMAL_ARRAY, CUBE_POSITION_ARRAY, CUBE_NORMAL_ARRAY
 
 from OpenGL.GL import *
 from OpenGL.GLU import *
@@ -26,43 +25,65 @@ def read_maze(file_path = "test.maze"):
     return np.array([list(line) for line in lines], dtype=np.int8)
 
 class Assignment3(BaseApp3D):
-    def __init__(self):
-        super().__init__(fullscreen=True, ambient_color=Color("red"),update_camera=False)
+    EMPTY_CELL = 1
+    START_CELL = 2
 
-        self.maze = read_maze()
+    def __init__(self):
+        super().__init__(fullscreen=True, ambient_color=Color("white"), clear_color=Color(30, 30, 30), update_camera=False)
+
+        self.maze = read_maze(file_path="test.maze")
 
         ratio = self.win_size.aspect_ratio
         self.player = Player(self, camera_params={"ratio": ratio, "fov": math.tau/6., "near": .5, "far": 100.})
+
         self.camera = self.player.camera
+        self.light = self.player.light
 
-        self.light = MovableLight(self, Vector3D.UP * 2., Color("white"))
+        self.objects.append(self.player)
 
-        self.light_cube = Cube(self, color=self.light.color)
-        self.light_cube.scale_by(.1)
-        self.light_cube.translate_to(self.light.origin)
-        self.light_cube.shader.set_unshaded(True)
+        self.maze = read_maze().transpose()
 
-        self.objects = [self.light_cube]
-
-        self.maze = read_maze()
-
-        yellow_mat = MeshShader(positions=PLANE_POSITION_ARRAY, normals=PLANE_NORMAL_ARRAY,
+        floor_mat = MeshShader(positions=PLANE_POSITION_ARRAY, normals=PLANE_NORMAL_ARRAY,
                                 diffuse_color=Color("yellow"))
-        blue_mat   = MeshShader(diffuse_color=Color("blue"), vbo=yellow_mat.pos_vbo)
+        wall_mat = MeshShader(diffuse_color=Color("blue"), vbo=floor_mat.pos_vbo)
         center = Vector2D(*self.maze.shape).yx
 
         # Create a Plane for each wall in the maze
         for i in range(self.maze.shape[0]):
             for j in range(self.maze.shape[1]):
-                shader = blue_mat if self.maze[i][j] == 1 else yellow_mat
-                pos = Vector2D(j, i)*2 - center
+                maze_pos = Vector2D(i,j)
+                pos = (maze_pos*2 - center).x0y
 
-                plane = Plane(self, origin=pos.x0y, shader=shader, scale=Vector3D.ONE)
-                self.objects.append(plane)
+                if self.cell_state_at(maze_pos) == Assignment3.EMPTY_CELL:
+                    plane = Plane(self, origin=pos, shader=floor_mat, scale=Vector3D.ONE)
+                    self.objects.append(plane)
+                else:
+                    # Check which surrounding cells are walls and
+                    # create a Plane for each of them
+                    for _dir in Vector2D.CARDINALS:
+                        new_pos = maze_pos + _dir
+
+                        # check that new_pos is valid
+                        if not self.is_valid_pos(new_pos):
+                            continue
+
+                        if self.cell_state_at(new_pos) == Assignment3.EMPTY_CELL:
+                            _dir = _dir.x0y
+                            wall_pos = pos + Vector3D.UP + _dir
+                            wall_norm = (-_dir)
+
+                            # Create the plane
+                            plane = Plane(self, origin=wall_pos, shader=wall_mat, normal=wall_norm, scale=Vector3D.ONE)
+                            self.objects.append(plane)
+
+    def cell_state_at(self, pos: Vector2D):
+        return self.maze[int(pos.x)][int(pos.y)]
+
+    def is_valid_pos(self, pos:Vector2D):
+        return 0 <= pos.x < self.maze.shape[0] and 0 <= pos.y < self.maze.shape[1]
 
     def update(self, delta):
-        self.player.update(delta)
-        self.light_cube.translate_to(self.light.origin)
+        pass
 
     def display(self):
         pass
@@ -71,8 +92,6 @@ class Assignment3(BaseApp3D):
         if event.type == pg.MOUSEMOTION:
             self.mouse_delta = Vector2D(event.rel) / self.win_size
             self.mouse_delta = self.mouse_delta.snap(.005)
-
-        self.camera.handle_event(event)
 
         return False
 

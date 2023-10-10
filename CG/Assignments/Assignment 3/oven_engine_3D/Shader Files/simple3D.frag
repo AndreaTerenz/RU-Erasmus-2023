@@ -16,7 +16,7 @@ varying vec4 norm;
 
 vec4 compute_shaded_color()
 {
-	vec4 ambient = (u_ambient * float(receive_ambient) * .05);
+	vec4 ambient = (u_ambient * float(receive_ambient) * .1);
 
 	float lambert = max(0.0, dot(s, norm) / (length(s) * length(norm)));
 	vec4 diffuse = u_light_diffuse * u_material_diffuse * lambert;
@@ -26,7 +26,9 @@ vec4 compute_shaded_color()
 	float shininess = u_shininess;
 	vec4 specular = u_light_specular * u_material_specular * pow(phong, shininess);
 
-	return ambient + diffuse + specular;
+	float dist_factor = max(0., 1.0 - min(dist / u_light_radius, 1.0));
+
+	return (ambient + diffuse + specular) * dist_factor;
 }
 
 void main(void)
