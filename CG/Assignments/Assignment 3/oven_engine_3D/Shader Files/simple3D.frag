@@ -1,5 +1,6 @@
 uniform vec4 u_light_diffuse;
 uniform vec4 u_light_specular;
+uniform float u_light_radius;
 uniform vec4 u_material_diffuse;
 uniform vec4 u_material_specular;
 uniform vec4 u_ambient;
@@ -13,6 +14,7 @@ uniform bool unshaded;
 varying vec4 v_color;
 varying vec4 s, v, h;
 varying vec4 norm;
+varying float dist;
 
 vec4 compute_shaded_color()
 {

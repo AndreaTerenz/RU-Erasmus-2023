@@ -291,6 +291,7 @@ class MeshShader(Shader3D):
 
     def set_light_uniforms(self, light: "Light"):
         self.set_uniform_vec3D(light.origin, "u_light_position")
+        self.set_uniform_float(light.radius, "u_light_radius")
         self.set_uniform_color(light.color, "u_light_diffuse")
         self.set_uniform_color(light.color, "u_light_specular")
 

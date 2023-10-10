@@ -4,10 +4,11 @@ from oven_engine_3D.utils.geometry import Vector3D
 
 
 class Light(Entity):
-    def __init__(self, parent_app, position, color):
+    def __init__(self, parent_app, position, color, radius=10.):
         super().__init__(parent_app, origin=position)
 
         self.color = color
+        self.radius = radius
 
     def _update(self, delta):
         pass
