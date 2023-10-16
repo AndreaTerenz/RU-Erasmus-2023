@@ -34,7 +34,7 @@ class Assignment3(BaseApp3D):
         super().__init__(fullscreen=True, ambient_color=Color("white"), clear_color=Color(30, 30, 30), update_camera=False)
 
         self.scaling = 1.
-        self.maze = read_maze(file_path="test.maze").transpose()
+        self.maze = read_maze(file_path="test2.maze").transpose()
         # Dictionary of LineColliders, where each key is a Vector2D representing a cell in the maze grid
         # and each value is a list of LineColliders representing the walls of that cell
         self.walls = {}

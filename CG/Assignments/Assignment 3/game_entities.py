@@ -85,11 +85,10 @@ class Player(Entity):
             for wall in neighbor_walls:
                 if wall.distance_to(self.position.xz) < self.collision_radius:
                     total_norm += wall.normal
-            print(neighbor_walls, total_norm, self.maze_pos)
 
-            total_norm = total_norm.normalized
+            total_norm = total_norm.normalized.x0y
 
-            slide_dir -= total_norm.x0y
+            slide_dir -= total_norm * max(0., slide_dir.dot(total_norm))
 
             slide_offset = slide_dir * sp
 
