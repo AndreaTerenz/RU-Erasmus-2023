@@ -33,7 +33,7 @@ class Assignment3(BaseApp3D):
         super().__init__(fullscreen=False, ambient_color=Color("white"), clear_color=Color(30, 30, 30), update_camera=False)
 
         self.scaling = 1.
-        self.maze = read_maze(file_path="test2.maze").transpose()
+        self.maze = read_maze(file_path="test.maze").transpose()
 
         floor_mat = MeshShader(positions=PLANE_POSITION_ARRAY, normals=PLANE_NORMAL_ARRAY,
                                 diffuse_color=Color("yellow"))

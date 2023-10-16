@@ -112,7 +112,7 @@ class Player(Entity):
 
             slide_offset = slide_dir * sp
 
-            there = self.parent_app.world_to_maze(self.position + slide_offset * self.collision_radius)
+            there = self.parent_app.world_to_maze(self.position + slide_dir * self.collision_radius * delta)# * self.collision_radius)
 
             if self.parent_app.cell_state_at(there) != 0:
 
