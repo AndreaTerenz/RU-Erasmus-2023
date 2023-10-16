@@ -20,7 +20,7 @@ class PlayerLight(Light):
 class Player(Entity):
 
     def __init__(self, parent_app, camera_params: dict, maze_pos=Vector3D.ZERO, rot_y=0., height=1.,
-                 coll_radius=5.):
+                 coll_radius=.3, speed=5.):
 
         origin = parent_app.maze_to_world(maze_pos) #* 2.
 
@@ -30,7 +30,7 @@ class Player(Entity):
         look_at = (Vector3D.FORWARD + v_offset).rotate(Vector3D.UP, rot_y) + origin
 
         self.forward_dir = look_at.x0z.normalized
-        self.speed = 7.
+        self.speed = speed
         self.camera = FPCamera(parent_app, eye=origin + v_offset, look_at=look_at, sensitivity=80., **camera_params)
         self.light = PlayerLight(parent_app, self, Color("white"))
 
@@ -44,8 +44,6 @@ class Player(Entity):
             pg.K_d: Vector3D.LEFT,
         }
 
-        self.maze_pos = maze_pos
-
         print("PLAYER STARTS AT: ", self.maze_pos)
 
         parent_app.add_keys(self.slide_keys.keys())
@@ -54,43 +52,14 @@ class Player(Entity):
     def position(self):
         return self.camera.view_matrix.eye
 
+    @property
+    def maze_pos(self):
+        return self.parent_app.world_to_maze(self.position)
+
     def _update(self, delta):
-
-
         self.move(delta)
         self.camera.update(delta)
         self.light.update(delta)
-
-    def check_collisions_at(self, p):
-        maze_pos = self.parent_app.world_to_maze(p) / 2.
-        print("DIOCANE ", maze_pos)
-        # Get list of surrounding cells that are walls
-        wall_norms = []
-        for dir in Vector2D.CARDINALS:
-            cell = maze_pos + dir
-            if self.parent_app.cell_state_at(cell) == 0:
-                print(cell, end=" ")
-                wall_norms.append(-dir)
-        if len(wall_norms) > 0:
-            print(" | ", end="")
-
-
-        output = Vector3D.ZERO
-        # Check if player is colliding with any of the surrounding walls
-        for n in wall_norms:
-            other = maze_pos - n
-
-            # Distance from center of current cell
-            dist = (p.xz - maze_pos).length
-
-            if dist >= self.collision_radius * 2:
-                print(other, end=" ")
-                output += n.x0y
-
-        if len(wall_norms) > 0:
-            print()
-
-        return output.normalized
 
     def move(self, delta):
         slide_dir = Vector3D.ZERO
@@ -110,14 +79,27 @@ class Player(Entity):
             slide_dir = slide_dir.rotate(Vector3D.UP, self.camera.y_rot).normalized
             sp = delta * self.speed
 
+            neighbor_walls = self.get_walls()
+            total_norm = Vector2D.ZERO
+
+            for wall in neighbor_walls:
+                if wall.distance_to(self.position.xz) < self.collision_radius:
+                    total_norm += wall.normal
+            print(neighbor_walls, total_norm, self.maze_pos)
+
+            total_norm = total_norm.normalized
+
+            slide_dir -= total_norm.x0y
+
             slide_offset = slide_dir * sp
 
-            there = self.parent_app.world_to_maze(self.position + slide_dir * self.collision_radius * delta)# * self.collision_radius)
+            # move player
+            self.camera.translate(slide_offset)
 
-            if self.parent_app.cell_state_at(there) != 0:
-
-                self.camera.translate(slide_offset)
-
+    def get_walls(self):
+        # Get walls of current cell
+        # using the dict of LineColliders in the parent app
+        return self.parent_app.walls.get(self.maze_pos, [])
 
     def handle_event(self, ev):
         self.camera.handle_event(ev)

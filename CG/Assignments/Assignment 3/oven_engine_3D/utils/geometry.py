@@ -140,6 +140,9 @@ class AbstractVector(ABC):
     def __round__(self, n):
         return self.map(round, n)
 
+    def __hash__(self):
+        return hash(tuple(self.components))
+
     def snap(self, step: float):
         def s(val, st):
             return round(val/st)*st

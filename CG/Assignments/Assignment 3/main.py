@@ -9,6 +9,7 @@ from oven_engine_3D.base_app import BaseApp3D
 from oven_engine_3D.camera import FPCamera
 from oven_engine_3D.entities import Cube, Plane
 from oven_engine_3D.shaders import MeshShader
+from oven_engine_3D.utils.collisions import LineCollider
 from oven_engine_3D.utils.geometry import Vector3D, Vector2D
 from oven_engine_3D.utils.gl3d import PLANE_POSITION_ARRAY, PLANE_NORMAL_ARRAY, CUBE_POSITION_ARRAY, CUBE_NORMAL_ARRAY
 
@@ -30,14 +31,19 @@ class Assignment3(BaseApp3D):
     START_CELL = 2
 
     def __init__(self):
-        super().__init__(fullscreen=False, ambient_color=Color("white"), clear_color=Color(30, 30, 30), update_camera=False)
+        super().__init__(fullscreen=True, ambient_color=Color("white"), clear_color=Color(30, 30, 30), update_camera=False)
 
         self.scaling = 1.
         self.maze = read_maze(file_path="test.maze").transpose()
+        # Dictionary of LineColliders, where each key is a Vector2D representing a cell in the maze grid
+        # and each value is a list of LineColliders representing the walls of that cell
+        self.walls = {}
 
         floor_mat = MeshShader(positions=PLANE_POSITION_ARRAY, normals=PLANE_NORMAL_ARRAY,
                                 diffuse_color=Color("yellow"))
         wall_mat = MeshShader(diffuse_color=Color("blue"), vbo=floor_mat.pos_vbo)
+        # db_mat = MeshShader(positions=CUBE_POSITION_ARRAY, normals=CUBE_NORMAL_ARRAY, diffuse_color=Color("red"))
+        # db_mat2 = MeshShader(vbo=db_mat.pos_vbo, diffuse_color=Color("green"))
 
         self.maze_shape = Vector2D(*self.maze.shape)
         start_pos = None
@@ -46,6 +52,7 @@ class Assignment3(BaseApp3D):
         for i in range(self.maze.shape[0]):
             for j in range(self.maze.shape[1]):
                 maze_pos = Vector2D(i,j)
+
                 pos = self.maze_to_world(maze_pos)
 
                 if self.cell_state_at(maze_pos) != Assignment3.WALL_CELL:
@@ -54,8 +61,32 @@ class Assignment3(BaseApp3D):
 
                     if self.cell_state_at(maze_pos) == Assignment3.START_CELL and start_pos is None:
                         start_pos = maze_pos #+ Vector3D.UP
+
+                    # Create a linecollider for each neighboring wall cell
+                    for _dir in Vector2D.CARDINALS:
+                        new_pos = maze_pos + _dir
+
+                        # check that new_pos is valid
+                        if not self.is_valid_pos(new_pos):
+                            continue
+
+                        if self.cell_state_at(new_pos) == Assignment3.WALL_CELL:
+                            # knowing the plane's center with wall_pos and its scale
+                            # compute the vertices of the plane on the ground
+                            center_ground = new_pos - _dir * .5
+                            v_left = center_ground + _dir.orthogonal * .5
+                            v_right = center_ground - _dir.orthogonal * .5
+
+                            # Create a LineCollider for the plane
+                            # and add it to the list of walls for the current cell
+                            line = LineCollider(v_left, v_right)
+
+                            if maze_pos not in self.walls.keys():
+                                self.walls[maze_pos] = [line]
+                            else:
+                                self.walls[maze_pos].append(line)
                 else:
-                    # Check which surrounding cells are walls and
+                    # Check which surrounding cells are not walls and
                     # create a Plane for each of them
                     for _dir in Vector2D.CARDINALS:
                         new_pos = maze_pos + _dir
@@ -66,7 +97,7 @@ class Assignment3(BaseApp3D):
 
                         if self.cell_state_at(new_pos) != Assignment3.WALL_CELL:
                             _dir = _dir.x0y
-                            wall_pos = pos + (Vector3D.UP + _dir)*.5
+                            wall_pos = pos + (Vector3D.UP*2. + _dir)*.5
                             wall_norm = -_dir
 
                             scale = Vector3D.ONE
@@ -78,6 +109,20 @@ class Assignment3(BaseApp3D):
                             # Create the plane
                             plane = Plane(self, origin=wall_pos, shader=wall_mat, normal=wall_norm, scale=scale)
                             self.objects.append(plane)
+
+                            # knowing the plane's center with wall_pos and its scale
+                            # compute the vertices of the plane on the ground
+                            center_ground = wall_pos.xz
+                            v_left = center_ground + wall_norm.xz.orthogonal * scale.x * .5
+                            v_right = center_ground - wall_norm.xz.orthogonal * scale.x * .5
+
+                            # Create a LineCollider for the plane
+                            # and add it to the list of walls for the current cell
+                            line = LineCollider(v_left, v_right)
+                            if maze_pos not in self.walls.keys():
+                                self.walls[maze_pos] = [line]
+                            else:
+                                self.walls[maze_pos].append(line)
 
         ratio = self.win_size.aspect_ratio
         self.player = Player(self, maze_pos=start_pos, camera_params={"ratio": ratio, "fov": math.tau/6., "near": .1, "far": 80.})
@@ -101,6 +146,9 @@ class Assignment3(BaseApp3D):
 
     def is_valid_pos(self, pos:Vector2D):
         return 0 <= pos.x < self.maze.shape[0] and 0 <= pos.y < self.maze.shape[1]
+
+    def cell_walls(self, pos: Vector2D):
+        return self.walls[pos]
 
     def update(self, delta):
         pass
