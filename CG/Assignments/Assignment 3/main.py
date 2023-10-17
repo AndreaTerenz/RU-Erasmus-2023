@@ -128,7 +128,7 @@ class Assignment3(BaseApp3D):
         self.player = Player(self, maze_pos=start_pos, camera_params={"ratio": ratio, "fov": math.tau/6., "near": .1, "far": 80.})
 
         self.camera = self.player.camera
-        self.light = self.player.light
+        self.lights.append(self.player.light)
 
         self.objects.append(self.player)
 
@@ -152,9 +152,6 @@ class Assignment3(BaseApp3D):
 
     def update(self, delta):
         pass
-        # WHY WHY WHY WHY
-        #print(self.maze_to_world(self.word_to_maze(self.player.position)) / 2.)
-        #print(math.floor(self.player.position) / 2.)
 
     def display(self):
         pass

@@ -1,6 +1,7 @@
 import os.path as path
 from abc import ABC, abstractmethod
 from itertools import chain
+from typing import Collection
 
 import OpenGL.GLUT
 import numpy as np
@@ -146,13 +147,13 @@ class Shader3D(ABC):
 
         return output
 
-    def get_uniform_int(self, uniform_name, count):
-        return self.get_uniform_value(uniform_name, count, ctypes.c_int)
+    def get_uniform_int(self, uniform_name, count = 1):
+        return self.get_uniform_value(uniform_name, ctypes.c_int, count)
 
-    def get_uniform_float(self, uniform_name, count):
-        return self.get_uniform_value(uniform_name, count, ctypes.c_float)
+    def get_uniform_float(self, uniform_name, count = 1):
+        return self.get_uniform_value(uniform_name, ctypes.c_float, count)
 
-    def get_uniform_value(self, uniform_name, count, datatype):
+    def get_uniform_value(self, uniform_name, datatype, count = 1):
         loc = self.get_uniform_loc(uniform_name)
         output = (datatype * count)()
 
@@ -164,9 +165,12 @@ class Shader3D(ABC):
         return list(output) if count > 1 else output[0]
 
     #@uniform_updater
-    def set_uniform_color(self, color, uniform_name):
+    def set_uniform_matrix(self, matrix: Matrix, uniform_name):
         loc = self.get_uniform_loc(uniform_name)
+        glUniformMatrix4fv(loc, 1, True, matrix.values)
 
+    @staticmethod
+    def __get_color(color):
         if type(color) is Color:
             color = color.normalize()
         elif type(color) in [int, float]:
@@ -175,12 +179,20 @@ class Shader3D(ABC):
         if len(color) == 3:
             color = (*color, 1.)
 
-        glUniform4f(loc, *color)
+        return color
 
     #@uniform_updater
-    def set_uniform_matrix(self, matrix: Matrix, uniform_name):
+    def set_uniform_color(self, color, uniform_name):
         loc = self.get_uniform_loc(uniform_name)
-        glUniformMatrix4fv(loc, 1, True, matrix.values)
+        color = Shader3D.__get_color(color)
+
+        glUniform4f(loc, *color)
+
+    def set_uniform_colors(self, colors: Collection, uniform_name, count = 1):
+        assert len(colors) >= count, "Tried to set too few values for uniform!"
+
+        for color in colors:
+            self.set_uniform_color(color, uniform_name)
 
     #@uniform_updater
     def set_uniform_vec3D(self, vector: Vector3D, uniform_name, homogenous=True, w=1.0):
@@ -191,18 +203,30 @@ class Shader3D(ABC):
         else:
             glUniform3f(loc, *vector)
 
-    #@uniform_updater
-    def set_uniform_float(self, value: float, uniform_name):
-        loc = self.get_uniform_loc(uniform_name)
-        glUniform1f(loc, value)
+    def set_uniform_vec3Ds(self, vectors: Collection[Vector3D], uniform_name, homogenous=True, w=1.0):
+        for vector in vectors:
+            self.set_uniform_vec3D(vector, uniform_name, homogenous, w)
 
     #@uniform_updater
-    def set_uniform_int(self, value: int, uniform_name):
-        loc = self.get_uniform_loc(uniform_name)
-        glUniform1i(loc, value)
+    def set_uniform_float(self, value: [float|Collection], uniform_name):
+        count = 1 if isinstance(value, float) else len(value)
 
-    def set_uniform_bool(self, value: bool, uniform_name):
-        self.set_uniform_int(int(value), uniform_name)
+        loc = self.get_uniform_loc(uniform_name)
+        glUniform1fv(loc, count, value)
+
+    #@uniform_updater
+    def set_uniform_int(self, value: [int|Collection], uniform_name):
+        count = 1 if isinstance(value, int) else len(value)
+
+        loc = self.get_uniform_loc(uniform_name)
+        glUniform1iv(loc, count, value)
+
+    def set_uniform_bool(self, value: [bool|Collection], uniform_name):
+        if isinstance(value, bool):
+            value = [value]
+
+        value = [int(v) for v in value]
+        self.set_uniform_int(value, uniform_name)
 
     def set_camera_uniforms(self, camera: 'Camera'):
         self.set_projection_matrix(camera.projection_matrix)
@@ -265,6 +289,9 @@ class MeshShader(Shader3D):
         self.set_receive_ambient(receive_ambient)
         self.set_shininess(shininess)
 
+        test = [Vector3D.UP, Vector3D.DOWN, Vector3D.LEFT, Vector3D.RIGHT]
+        self.set_uniform_vec3Ds(test, "u_many_pos", homogenous=False)
+
     def set_attribute_buffers(self):
         values_per_attrib = 3
         attribs_count = 6
@@ -289,23 +316,15 @@ class MeshShader(Shader3D):
         super().set_camera_uniforms(camera)
         self.set_uniform_vec3D(camera.view_matrix.eye, "u_camera_position")
 
-    def set_light_uniforms(self, light: "Light"):
-        self.set_uniform_vec3D(light.origin, "u_light_position")
-        self.set_uniform_float(light.radius, "u_light_radius")
-        self.set_uniform_color(light.color, "u_light_diffuse")
-        self.set_uniform_color(light.color, "u_light_specular")
+    def set_light_uniforms(self, lights: ["Light"|Collection]):
+        if not isinstance(lights, Collection):
+            lights = [lights]
 
-    def set_camera_position(self, pos: Vector3D):
-        self.set_uniform_vec3D(pos, "u_camera_position")
-
-    def set_light_position(self, pos: Vector3D):
-        self.set_uniform_vec3D(pos, "u_light_position")
-
-    def set_light_diffuse(self, color):
-        self.set_uniform_color(color, "u_light_diffuse")
-
-    def set_light_specular(self, color):
-        self.set_uniform_color(color, "u_light_specular")
+        for idx, l in enumerate(lights):
+            self.set_uniform_vec3D(l.origin, f"u_light_position[{idx}]")
+            self.set_uniform_float(l.radius, f"u_light_radius[{idx}]")
+            self.set_uniform_color(l.color, f"u_light_diffuse[{idx}]")
+            self.set_uniform_color(l.color, f"u_light_specular[{idx}]")
 
     def set_material_diffuse(self, color):
         self.set_uniform_color(color, "u_material_diffuse")

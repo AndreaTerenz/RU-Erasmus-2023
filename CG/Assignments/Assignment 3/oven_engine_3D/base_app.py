@@ -36,6 +36,7 @@ class BaseApp3D(ABC):
         self.camera = None
         self.update_camera = update_camera
         self.light = None
+        self.lights = []
 
         self.clock = pg.time.Clock()
         self.ticks = 0

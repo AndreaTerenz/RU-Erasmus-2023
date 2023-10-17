@@ -53,15 +53,13 @@ PLANE_POSITION_ARRAY = np.array([[-1, 0, -1],
                                  [ 1, 0, -1]])*.5
 PLANE_NORMAL_ARRAY = np.array([list(Vector3D.UP)]*4)
 
-def draw_cube(camera, light, shader,
-              ambient_color = (1., 1., 1., 1.),
+def draw_cube(app_context: 'BaseApp3D', shader,
               offset: Vector3D = Vector3D.ZERO, rotation: Vector3D = None, scale:Vector3D = None, model_matrix: ModelMatrix = None):
 
-    draw_mesh(camera, light, shader, 4, 6, ambient_color, offset, scale, rotation, model_matrix)
+    draw_mesh(app_context, shader, 4, 6, offset, scale, rotation, model_matrix)
 
 
-def draw_plane(camera, light, shader,
-               ambient_color = (1., 1., 1., 1.),
+def draw_plane(app_context: 'BaseApp3D', shader,
                normal = None, offset = Vector3D.ZERO, scale:[float|Vector2D] = 1., rotation: Vector3D = Vector3D.ZERO, model_matrix = None):
     if model_matrix is None:
         if normal is not None:
@@ -72,10 +70,9 @@ def draw_plane(camera, light, shader,
         else:
             scale = Vector3D(scale.x, 1., scale.y)
 
-    draw_mesh(camera, light, shader, 4, 1, ambient_color, offset, scale, rotation, model_matrix)
+    draw_mesh(app_context, shader, 4, 1, offset, scale, rotation, model_matrix)
 
-def draw_mesh(camera, light, shader, verts_per_face, face_count,
-              ambient_color = (1., 1., 1., 1.),
+def draw_mesh(app_context: 'BaseApp3D', shader, verts_per_face, face_count,
               offset: Vector3D = Vector3D.ZERO, scale:Vector3D = Vector3D.ONE, rotation: Vector3D = Vector3D.ZERO, model_matrix = None):
     if model_matrix is None:
         model_matrix = ModelMatrix.from_transformations(offset, rotation, scale)
@@ -85,8 +82,15 @@ def draw_mesh(camera, light, shader, verts_per_face, face_count,
     shader.set_attribute_buffers()
 
     shader.set_model_matrix(model_matrix)
+
+    camera = app_context.camera
+    lights = app_context.lights
+    ambient_color = app_context.ambient_color
+
+    shader.set_uniform_int(len(lights), "u_light_count")
+    shader.set_light_uniforms(lights)
+
     shader.set_camera_uniforms(camera)
-    shader.set_light_uniforms(light)
     shader.set_ambient(ambient_color)
 
     for k in range(face_count):

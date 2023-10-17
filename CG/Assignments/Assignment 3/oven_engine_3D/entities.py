@@ -2,6 +2,7 @@ import math
 from abc import abstractmethod, ABC
 
 from OpenGL.GL import *
+from sympy import appellf1
 
 # from oven_engine_3D.Geometry import Vector3D
 from oven_engine_3D.matrices import ModelMatrix
@@ -93,11 +94,8 @@ class Cube(MeshEntity):
         super().__init__(parent_app, origin, rotation=rotation, scale=scale, shader=shader)
 
     def draw(self):
-        light = self.parent_app.light
-        camera = self.parent_app.camera
-
-        draw_cube(camera=camera, light=light, ambient_color=self.parent_app.ambient_color,
-                  model_matrix=self.model_matrix, shader=self.shader)
+        draw_cube(app_context=self.parent_app, shader=self.shader,
+                  model_matrix=self.model_matrix)
 
     def handle_event(self, ev):
         pass
@@ -115,17 +113,14 @@ class Plane(MeshEntity):
 
         super().__init__(parent_app, origin, rotation=rotation, scale=scale, shader=shader)
 
-    def point_to(self, dir: Vector3D):
-        rotation = Vector3D(*euler_from_vectors(dir))
+    def point_to(self, _dir: Vector3D):
+        rotation = Vector3D(*euler_from_vectors(_dir))
         self.rotate(rotation.x, Vector3D.RIGHT)
         self.rotate(rotation.y, Vector3D.UP)
         self.rotate(rotation.z, Vector3D.FORWARD)
 
     def draw(self):
-        camera = self.parent_app.camera
-        light = self.parent_app.light
-
-        draw_plane(camera, light, ambient_color=self.parent_app.ambient_color,
+        draw_plane(self.parent_app,
                    model_matrix=self.model_matrix, shader=self.shader)
 
     def _update(self, delta):
