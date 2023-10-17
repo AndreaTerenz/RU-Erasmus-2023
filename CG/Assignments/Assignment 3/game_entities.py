@@ -1,4 +1,6 @@
 import math
+import sys
+
 import pygame as pg
 from pygame import Color
 
@@ -60,6 +62,10 @@ class Player(Entity):
         self.move(delta)
         self.camera.update(delta)
         self.light.update(delta)
+
+        if self.maze_pos == self.parent_app.target_pos:
+            print("YOU WIN!")
+            sys.exit(0)
 
     def move(self, delta):
         slide_dir = Vector3D.ZERO
