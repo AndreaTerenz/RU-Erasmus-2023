@@ -1,3 +1,5 @@
+from abc import ABC, abstractmethod
+
 from pygame.locals import *
 
 from oven_engine_3D.shaders import *

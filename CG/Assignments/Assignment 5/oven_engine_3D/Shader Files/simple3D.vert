@@ -1,5 +1,6 @@
 attribute vec3 a_position;
 attribute vec3 a_normal;
+attribute vec2 a_uv;
 
 uniform mat4 u_model_matrix;
 uniform mat4 u_view_matrix;
@@ -7,9 +8,12 @@ uniform mat4 u_projection_matrix;
 
 varying vec4 v_pos;
 varying vec4 v_norm;
+varying vec2 v_uv;
 
 void main(void)
 {
+	v_uv = a_uv;
+
 	vec4 position = vec4(a_position, 1.0);
 	v_norm = vec4(a_normal, 0.0);
 

@@ -1,5 +1,4 @@
 import os.path as path
-from abc import ABC, abstractmethod
 from itertools import chain
 from typing import Collection
 
@@ -9,9 +8,10 @@ from OpenGL.GL import *
 from OpenGL.GLU import *
 from OpenGL.error import GLError
 from pygame import Color
+import pygame.image as img
 
 from oven_engine_3D.matrices import Matrix
-from oven_engine_3D.utils.geometry import Vector3D
+from oven_engine_3D.utils.geometry import Vector3D, Vector2D
 
 DEFAULT_SHADER_DIR = path.join("oven_engine_3D", "Shader Files")
 DEFAULT_VERTEX = "simple3D.vert"
@@ -28,17 +28,28 @@ def uniform_updater(func):
 
     return foo
 
-class Shader3D(ABC):
+class MeshShader:
     compiled_vert_shaders = {}
     compile_frag_shaders = {}
 
-    def __init__(self, vert_shader_path = None, frag_shader_path = None, shader_folder : str = None, halt_on_error = False):
-        if vert_shader_path is None:
-            vert_shader_path = DEFAULT_VERTEX
-        if frag_shader_path is None:
-            frag_shader_path = DEFAULT_FRAG
-        if shader_folder is None:
-            shader_folder = DEFAULT_SHADER_DIR
+    def __init__(self, positions=None, normals=None, uvs=None,
+                 vert_shader_path = DEFAULT_VERTEX, frag_shader_path = DEFAULT_FRAG, shader_folder : str = DEFAULT_SHADER_DIR,
+                 diffuse_color=Color("white"), specular_color=(.2, .2, .2), ambient_color=(.1, .1, .1),
+                 shininess=30., unshaded=False, receive_ambient=True, diffuse_texture = "", vbo=0):
+
+        assert (positions is None or normals is None) != (vbo == 0), "Must provide either positions and normals or a vbo"
+
+        self.diff_tex_id = -1
+        if diffuse_texture != "":
+            surf = img.load(diffuse_texture)
+            tex_str = img.tostring(surf, "RGBA", 1)
+            size = Vector2D(surf.get_size())
+
+            self.diff_tex_id = glGenTextures(1)
+            glBindTexture(GL_TEXTURE_2D, self.diff_tex_id)
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, size.x, size.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, tex_str)
 
         print("Compiling shaders...")
 
@@ -46,43 +57,67 @@ class Shader3D(ABC):
         self.frag_path = frag_shader_path
         self.src_dir = shader_folder
 
-        if self.vert_path in Shader3D.compiled_vert_shaders:
-            vert_shader = Shader3D.compiled_vert_shaders[self.vert_path]
-            print("\tVertex shader already compiled")
-        else:
-            vert_shader = Shader3D.compile_shader(self.vert_path, GL_VERTEX_SHADER, shader_folder=self.src_dir)
-
-            assert vert_shader != -1 or not halt_on_error, f"Couldn't load vertex shader '{self.vert_path}'"
-            print(f"\tVertex shader {'ok' if vert_shader != -1 else 'failed'}")
-            Shader3D.compiled_vert_shaders[self.vert_path] = vert_shader
-
-        if self.frag_path in Shader3D.compile_frag_shaders:
-            frag_shader = Shader3D.compile_frag_shaders[self.frag_path]
-            print("\tFrag shader already compiled")
-        else:
-            frag_shader = Shader3D.compile_shader(self.frag_path, GL_FRAGMENT_SHADER, shader_folder=self.src_dir)
-
-            assert frag_shader != -1 or not halt_on_error, f"Couldn't load fragment shader '{self.frag_path}'"
-            print(f"\tFragment shader {'ok' if frag_shader != -1 else 'failed'}")
-            Shader3D.compile_frag_shaders[self.frag_path] = frag_shader
-
-        self.renderingProgramID = glCreateProgram()
-
-        assert self.renderingProgramID != 0, print("Couldn't create program")
-
-        glAttachShader(self.renderingProgramID, vert_shader)
-        glAttachShader(self.renderingProgramID, frag_shader)
-        glLinkProgram(self.renderingProgramID)
-
-        assert glGetProgramiv(self.renderingProgramID, GL_LINK_STATUS) == 1, print("Couldn't link program")
+        self.renderingProgramID = self.get_shader_program()
 
         self.uniform_locations = {}
         self.uniform_values = {}
+
+        self.positionLoc = self.enable_attrib_array("a_position")
+        self.normalLoc = self.enable_attrib_array("a_normal")
+        self.uvLoc = self.enable_attrib_array("a_uv")
+        self.uvs = uvs
+
+        self.pos_vbo = vbo
+
+        if self.pos_vbo == 0:
+            tmp = [(*p,*n) for p,n in zip(positions, normals)]
+            tmp = list(chain.from_iterable(tmp))
+
+            self.pos_vbo = glGenBuffers(1)
+            glBindBuffer(GL_ARRAY_BUFFER, self.pos_vbo)
+            glBufferData(GL_ARRAY_BUFFER, np.array(tmp, dtype="float32"), GL_STATIC_DRAW)
+            glBindBuffer(GL_ARRAY_BUFFER, 0)
+
+        self.unshaded = unshaded
+        self.receive_ambient = receive_ambient
+
+        self.use()
+        self.set_material_diffuse(diffuse_color)
+        self.set_material_specular(specular_color)
+        self.set_material_ambient(ambient_color)
+        self.set_diffuse_texture(self.diff_tex_id)
+        self.set_uniform_bool((self.diff_tex_id > 0), "u_sample_texture")
+        self.set_unshaded(unshaded)
+        self.set_receive_ambient(receive_ambient)
+        self.set_shininess(shininess)
+
+        test = [Vector3D.UP, Vector3D.DOWN, Vector3D.LEFT, Vector3D.RIGHT]
+        self.set_uniform_vec3Ds(test, "u_many_pos", homogenous=False)
+
+    def get_shader_program(self):
+        vert_shader = MeshShader.compile_shader(self.vert_path, GL_VERTEX_SHADER, shader_folder=self.src_dir)
+        frag_shader = MeshShader.compile_shader(self.frag_path, GL_FRAGMENT_SHADER, shader_folder=self.src_dir)
+
+        progID = glCreateProgram()
+
+        assert progID != 0, print("Couldn't create program")
+        glAttachShader(progID, vert_shader)
+        glAttachShader(progID, frag_shader)
+        glLinkProgram(progID)
+        assert glGetProgramiv(progID, GL_LINK_STATUS) == 1, print("Couldn't link program")
+
+        return progID
 
     @staticmethod
     def compile_shader(shader_file: str, shader_type: int, use_fallback = True, shader_folder: str = ""):
         if not shader_type in [GL_VERTEX_SHADER, GL_FRAGMENT_SHADER]:
             return -1
+
+        lookup = MeshShader.compiled_vert_shaders if shader_type == GL_VERTEX_SHADER else MeshShader.compile_frag_shaders
+
+        if shader_file in lookup:
+            print("\tShader already compiled")
+            return lookup[shader_file]
 
         shader_id = glCreateShader(shader_type)
 
@@ -110,7 +145,7 @@ class Shader3D(ABC):
             elif shader_type == GL_FRAGMENT_SHADER:
                 fallback_path = path.join(DEFAULT_SHADER_DIR, DEFAULT_FRAG)
 
-            return Shader3D.compile_shader(fallback_path, shader_type, False)
+            return MeshShader.compile_shader(fallback_path, shader_type, False)
 
         glCompileShader(shader_id)
         result = glGetShaderiv(shader_id, GL_COMPILE_STATUS)
@@ -118,10 +153,15 @@ class Shader3D(ABC):
             print(f"Couldn't compile vertex shader\nShader compilation Log:\n{str(glGetShaderInfoLog(shader_id))}")
             return -1
 
+        lookup[shader_file] = shader_id
+
         return shader_id
 
     def enable_attrib_array(self, attrib_name):
         attrib_loc = self.get_attrib_loc(attrib_name)
+
+        assert attrib_loc != -1, "Attribute not found!"
+
         glEnableVertexAttribArray(attrib_loc)
 
         return attrib_loc
@@ -131,6 +171,7 @@ class Shader3D(ABC):
 
     def use(self):
         try:
+            self._on_use()
             glUseProgram(self.renderingProgramID)
         except OpenGL.error.GLError:
             print(glGetProgramInfoLog(self.renderingProgramID))
@@ -184,7 +225,7 @@ class Shader3D(ABC):
     #@uniform_updater
     def set_uniform_color(self, color, uniform_name):
         loc = self.get_uniform_loc(uniform_name)
-        color = Shader3D.__get_color(color)
+        color = MeshShader.__get_color(color)
 
         glUniform4f(loc, *color)
 
@@ -222,7 +263,7 @@ class Shader3D(ABC):
         glUniform1iv(loc, count, value)
 
     def set_uniform_bool(self, value: [bool|Collection], uniform_name):
-        if isinstance(value, bool):
+        if not isinstance(value, Collection):
             value = [value]
 
         value = [int(v) for v in value]
@@ -231,6 +272,7 @@ class Shader3D(ABC):
     def set_camera_uniforms(self, camera: 'Camera'):
         self.set_projection_matrix(camera.projection_matrix)
         self.set_view_matrix(camera.view_matrix)
+        self.set_uniform_vec3D(camera.view_matrix.eye, "u_camera_position")
 
     def set_model_matrix(self, matrix):
         self.set_uniform_matrix(matrix, self.model_mat_name)
@@ -241,57 +283,8 @@ class Shader3D(ABC):
     def set_view_matrix(self, matrix):
         self.set_uniform_matrix(matrix, self.view_mat_name)
 
-    @property
-    @abstractmethod
-    def model_mat_name(self):
-        return ""
-
-    @property
-    @abstractmethod
-    def projection_mat_name(self):
-        return ""
-
-    @property
-    @abstractmethod
-    def view_mat_name(self):
-        return ""
-
-class MeshShader(Shader3D):
-
-    def __init__(self, positions=None, normals=None,
-                 diffuse_color=(1., 1., 1.), specular_color=(.2, .2, .2), ambient_color=(.1, .1, .1), shininess=30.,
-                 unshaded=False, receive_ambient=True, halt_on_error = False, vbo=0):
-        super().__init__("simple3D.vert", "simple3D.frag", halt_on_error=halt_on_error)
-
-        assert (positions is None or normals is None) != (vbo == 0), "Must provide either positions and normals or a vbo"
-
-        self.positionLoc = self.enable_attrib_array("a_position")
-        self.normalLoc = self.enable_attrib_array("a_normal")
-
-        self.pos_vbo = vbo
-
-        if self.pos_vbo == 0:
-            tmp = [(*p,*n) for p,n in zip(positions, normals)]
-            tmp = list(chain.from_iterable(tmp))
-
-            self.pos_vbo = glGenBuffers(1)
-            glBindBuffer(GL_ARRAY_BUFFER, self.pos_vbo)
-            glBufferData(GL_ARRAY_BUFFER, np.array(tmp, dtype="float32"), GL_STATIC_DRAW)
-            glBindBuffer(GL_ARRAY_BUFFER, 0)
-
-        self.unshaded = unshaded
-        self.receive_ambient = receive_ambient
-
-        self.use()
-        self.set_material_diffuse(diffuse_color)
-        self.set_material_specular(specular_color)
-        self.set_material_ambient(ambient_color)
-        self.set_unshaded(unshaded)
-        self.set_receive_ambient(receive_ambient)
-        self.set_shininess(shininess)
-
-        test = [Vector3D.UP, Vector3D.DOWN, Vector3D.LEFT, Vector3D.RIGHT]
-        self.set_uniform_vec3Ds(test, "u_many_pos", homogenous=False)
+    def _on_use(self):
+        pass
 
     def set_attribute_buffers(self):
         values_per_attrib = 3
@@ -309,13 +302,16 @@ class MeshShader(Shader3D):
         norm_offset_size = offset_to_size(1)
         glVertexAttribPointer(self.normalLoc, values_per_attrib, GL_FLOAT, False, attribs_count * attrib_size, norm_offset_size)
 
-        # Pointless to unbind because this function will basically always
-        # precede a draw call where the vbo would get bound again anyway
-        #glBindBuffer(GL_ARRAY_BUFFER, 0)
+        glBindBuffer(GL_ARRAY_BUFFER, 0)
 
-    def set_camera_uniforms(self, camera: 'Camera'):
-        super().set_camera_uniforms(camera)
-        self.set_uniform_vec3D(camera.view_matrix.eye, "u_camera_position")
+    def set_uv_attribute(self):
+        if self.uvs is None:
+            return
+
+        glVertexAttribPointer(self.uvLoc, 2, GL_FLOAT, False, 0, self.uvs)
+
+    def bind_vbo(self):
+        glBindBuffer(GL_ARRAY_BUFFER, self.pos_vbo)
 
     def set_light_uniforms(self, lights: ["Light"|Collection]):
         if not isinstance(lights, Collection):
@@ -330,6 +326,15 @@ class MeshShader(Shader3D):
 
     def set_material_diffuse(self, color):
         self.set_uniform_color(color, "u_material_diffuse")
+
+    def set_diffuse_texture(self, diff_tex_id):
+        if diff_tex_id <= 0:
+            return
+
+        glActiveTexture(GL_TEXTURE0)
+        glBindTexture(GL_TEXTURE_2D, diff_tex_id)
+        loc = self.get_uniform_loc("u_tex")
+        glUniform1i(loc, 0)
 
     def set_material_specular(self, color):
         self.set_uniform_color(color, "u_material_specular")

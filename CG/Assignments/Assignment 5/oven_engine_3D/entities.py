@@ -9,7 +9,7 @@ from oven_engine_3D.matrices import ModelMatrix
 from oven_engine_3D.shaders import MeshShader
 from oven_engine_3D.utils.geometry import Vector3D
 from oven_engine_3D.utils.gl3d import CUBE_POSITION_ARRAY, CUBE_NORMAL_ARRAY, draw_cube, PLANE_POSITION_ARRAY, \
-    PLANE_NORMAL_ARRAY, euler_from_vectors, draw_plane
+    PLANE_NORMAL_ARRAY, euler_from_vectors, draw_plane, CUBE_UV_ARRAY, PLANE_UV_ARRAY
 
 
 class Entity(ABC):
@@ -89,7 +89,7 @@ class Cube(MeshEntity):
 
     def __init__(self, parent_app, origin=Vector3D.ZERO, rotation=Vector3D.ZERO, scale=Vector3D.ONE, color=(1.0, 0.0, 1.0), shader=None):
         if shader is None:
-            shader = MeshShader(positions=CUBE_POSITION_ARRAY, normals=CUBE_NORMAL_ARRAY, diffuse_color=color)
+            shader = MeshShader(positions=CUBE_POSITION_ARRAY, normals=CUBE_NORMAL_ARRAY, uvs=CUBE_UV_ARRAY, diffuse_color=color)
 
         super().__init__(parent_app, origin, rotation=rotation, scale=scale, shader=shader)
 
@@ -109,7 +109,7 @@ class Plane(MeshEntity):
                  shader=None):
         rotation = Vector3D(*euler_from_vectors(normal))
         if shader is None:
-            shader = MeshShader(positions=PLANE_POSITION_ARRAY, normals=PLANE_NORMAL_ARRAY, diffuse_color=color)
+            shader = MeshShader(positions=PLANE_POSITION_ARRAY, normals=PLANE_NORMAL_ARRAY, uvs=PLANE_UV_ARRAY, diffuse_color=color)
 
         super().__init__(parent_app, origin, rotation=rotation, scale=scale, shader=shader)
 

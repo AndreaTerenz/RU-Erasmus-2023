@@ -47,11 +47,37 @@ CUBE_NORMAL_ARRAY = np.array([list(Vector3D.BACKWARD)]*4+
                               [list(Vector3D.LEFT)]*4+
                               [list(Vector3D.RIGHT)]*4)
 
+CUBE_UV_ARRAY = np.array([1., 0., # back
+                          1., 1.,
+                          0., 1.,
+                          0., 0.,
+                          0., 0., # front
+                          0., 1.,
+                          1., 1.,
+                          1., 0.,
+                          0., 0., # bottom
+                          0., 1.,
+                          1., 1.,
+                          1., 0.,
+                          0., 0., # top
+                          0., 1.,
+                          1., 1.,
+                          1., 0.,
+                          0., 0., # left
+                          1., 0.,
+                          1., 1.,
+                          0., 1.,
+                          1., 0., # right
+                          0., 0.,
+                          0., 1.,
+                          1., 1.,])
+
 PLANE_POSITION_ARRAY = np.array([[-1, 0, -1],
                                  [-1, 0,  1],
                                  [ 1, 0,  1],
                                  [ 1, 0, -1]])*.5
 PLANE_NORMAL_ARRAY = np.array([list(Vector3D.UP)]*4)
+PLANE_UV_ARRAY = np.array([0., 0., 0., 1., 1., 1., 1., 0.])
 
 def draw_cube(app_context: 'BaseApp3D', shader,
               offset: Vector3D = Vector3D.ZERO, rotation: Vector3D = None, scale:Vector3D = None, model_matrix: ModelMatrix = None):
@@ -80,6 +106,7 @@ def draw_mesh(app_context: 'BaseApp3D', shader, verts_per_face, face_count,
     shader.use()
 
     shader.set_attribute_buffers()
+    shader.set_uv_attribute()
 
     shader.set_model_matrix(model_matrix)
 
@@ -93,6 +120,7 @@ def draw_mesh(app_context: 'BaseApp3D', shader, verts_per_face, face_count,
     shader.set_camera_uniforms(camera)
     shader.set_ambient(ambient_color)
 
+    shader.bind_vbo()
     for k in range(face_count):
         glDrawArrays(GL_TRIANGLE_FAN, k*verts_per_face, 4)
 
