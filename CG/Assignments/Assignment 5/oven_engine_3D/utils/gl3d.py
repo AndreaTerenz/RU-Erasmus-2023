@@ -38,7 +38,7 @@ CUBE_POSITION_ARRAY = np.array(
         [ 1, -1, -1],
         [ 1, -1,  1],
         [ 1,  1,  1],
-        [ 1,  1, -1]])*.5
+        [ 1,  1, -1]])
 
 CUBE_NORMAL_ARRAY = np.array([list(Vector3D.BACKWARD)]*4+
                               [list(Vector3D.FORWARD)]*4+

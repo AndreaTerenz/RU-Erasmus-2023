@@ -35,7 +35,7 @@ class Assignment3(BaseApp3D):
         self.objects.append(Plane(self, Vector3D.DOWN, shader=pMat, scale=150.))
 
         cMat = MeshShader(positions=CUBE_POSITION_ARRAY, normals=CUBE_NORMAL_ARRAY, diffuse_color=Color("red"))
-        self.objects.append(Cube(self, shader=cMat, origin=Vector3D.UP + Vector3D.FORWARD))
+        self.objects.append(Cube(self, shader=cMat, origin=Vector3D.UP + Vector3D.FORWARD*4.))
 
     def update(self, delta):
         pass
