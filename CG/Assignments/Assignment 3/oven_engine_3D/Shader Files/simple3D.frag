@@ -37,7 +37,7 @@ vec4 compute_shaded_color(vec4 s_vec, float d, float radius, vec4 light_diffuse,
 	float shininess = u_shininess;
 	vec4 specular = light_specular * u_material_specular * pow(phong, shininess);
 
-	float dist_factor = radius <= 0. ? 1. : max(0., 1.0 - min(d / radius, 1.0));
+	float dist_factor = radius <= 0. ? 1. : 1. - (d / radius); //max(0., 1.0 - min(d / radius, 1.0));
 
 	return (ambient + diffuse + specular) * dist_factor;
 }
