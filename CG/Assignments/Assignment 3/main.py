@@ -34,15 +34,11 @@ class Assignment3(BaseApp3D):
         self.scaling = 1.
         self.target_pos = Vector3D.ZERO
         self.maze = read_maze(file_path="test.maze").transpose()
-        # Dictionary of LineColliders, where each key is a Vector2D representing a cell in the maze grid
-        # and each value is a list of LineColliders representing the walls of that cell
         self.walls = {}
 
         floor_mat = MeshShader(positions=PLANE_POSITION_ARRAY, normals=PLANE_NORMAL_ARRAY,
                                 diffuse_color=Color("yellow"))
         wall_mat = MeshShader(diffuse_color=Color("blue"), vbo=floor_mat.pos_vbo)
-        # db_mat = MeshShader(positions=CUBE_POSITION_ARRAY, normals=CUBE_NORMAL_ARRAY, diffuse_color=Color("red"))
-        # db_mat2 = MeshShader(vbo=db_mat.pos_vbo, diffuse_color=Color("green"))
 
         self.maze_shape = Vector2D(*self.maze.shape)
         start_pos = None

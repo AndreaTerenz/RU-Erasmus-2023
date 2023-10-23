@@ -10,17 +10,10 @@ uniform int u_light_count;
 uniform bool receive_ambient;
 uniform bool unshaded;
 
-//varying vec4 v_pos;
-varying vec4 v_color;
 varying vec4 s[4];
 varying float dist[4];
 varying vec4 v, h;
 varying vec4 norm;
-
-vec4 snapvec4(vec4 v, float s)
-{
-	return vec4(floor(v.x / s) * s, floor(v.y / s) * s, floor(v.z / s) * s, floor(v.w / s) * s);
-}
 
 vec4 compute_shaded_color(vec4 s_vec, float d, float radius, vec4 light_diffuse, vec4 light_specular)
 {
@@ -37,7 +30,7 @@ vec4 compute_shaded_color(vec4 s_vec, float d, float radius, vec4 light_diffuse,
 	float shininess = u_shininess;
 	vec4 specular = light_specular * u_material_specular * pow(phong, shininess);
 
-	float dist_factor = radius <= 0. ? 1. : 1. - (d / radius); //max(0., 1.0 - min(d / radius, 1.0));
+	float dist_factor = radius <= 0. ? 1. : 1. - (d / radius);
 
 	return (ambient + diffuse + specular) * dist_factor;
 }
