@@ -6,6 +6,8 @@ uniform mat4 u_model_matrix;
 uniform mat4 u_view_matrix;
 uniform mat4 u_projection_matrix;
 
+uniform float u_time;
+
 varying vec4 v_pos;
 varying vec4 v_norm;
 varying vec2 v_uv;

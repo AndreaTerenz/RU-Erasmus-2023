@@ -25,11 +25,13 @@ class Assignment5(BaseApp3D):
         self.lights.append(self.player.light)
         self.objects.append(self.player)
 
-        planeMat = MeshShader(diffuse_color=Color("cyan"), diffuse_texture="res/img1.png")
-        cubeMat = planeMat.variation(diffuse_color=Color("red"), unshaded=True)
+        mat1 = MeshShader(diffuse_color=Color("cyan"), diffuse_texture="res/img1.png")
+        mat2 = mat1.variation(diffuse_color=Color("red"), unshaded=True, fragID="funky.frag")
 
-        self.objects.append(Plane(self, Vector3D.DOWN, shader=cubeMat, scale=50.))
-        self.objects.append(Cube(self, shader=planeMat, origin=Vector3D.UP*2. + Vector3D.FORWARD*4.))
+        self.objects.append(Plane(self, Vector3D.DOWN, shader=mat2, scale=50.))
+        self.objects.append(Cube(self, shader=mat1, origin=Vector3D.UP*2. + Vector3D.FORWARD*4.))
+
+        self.objects.append(Plane(self, origin=Vector3D.LEFT*4., normal=Vector3D.RIGHT, color=Color("white"), scale=10.))
 
     def update(self, delta):
         pass

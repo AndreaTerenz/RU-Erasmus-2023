@@ -80,8 +80,8 @@ class MeshShader:
             unshaded=kwargs.get("unshaded", self.unshaded),
             receive_ambient=kwargs.get("receive_ambient", self.receive_ambient),
             diffuse_texture=kwargs.get("diffuse_texture", self.diff_tex_id),
-            vertID=self.vert_id,
-            fragID=self.frag_id
+            vertID=kwargs.get("vertID", self.vert_id),
+            fragID=kwargs.get("fragID", self.frag_id),
         )
 
     @staticmethod
@@ -236,13 +236,13 @@ class MeshShader:
             glUniform3f(loc, *vector)
 
     def set_uniform_float(self, value: [float|Collection], uniform_name):
-        count = 1 if isinstance(value, float) else len(value)
+        count = 1 if not isinstance(value, Collection) else len(value)
 
         loc = self.get_uniform_loc(uniform_name)
         glUniform1fv(loc, count, value)
 
     def set_uniform_int(self, value: [int|Collection], uniform_name):
-        count = 1 if isinstance(value, int) else len(value)
+        count = 1 if not isinstance(value, Collection) else len(value)
 
         loc = self.get_uniform_loc(uniform_name)
         glUniform1iv(loc, count, value)
@@ -281,9 +281,10 @@ class MeshShader:
 
         glBindBuffer(GL_ARRAY_BUFFER, mesh_vbo)
 
+        offset_size = 0
         for idx in range(len(locations)):
-            offset_size = sum([s * v for s, v in zip(attrib_sizes[:idx], values_per_attrib[:idx])])
             glVertexAttribPointer(locations[idx], values_per_attrib[idx], GL_FLOAT, False, total_size, ctypes.c_void_p(offset_size))
+            offset_size += attrib_sizes[idx] * values_per_attrib[idx]
 
         glBindBuffer(GL_ARRAY_BUFFER, 0)
 
@@ -321,3 +322,6 @@ class MeshShader:
 
     def set_shininess(self, value: float):
         self.set_uniform_float(value, "u_material.shininess")
+
+    def set_time(self, value: float):
+        self.set_uniform_float(value, "u_time")

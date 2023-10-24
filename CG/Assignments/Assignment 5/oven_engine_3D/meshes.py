@@ -26,18 +26,19 @@ class Mesh(ABC):
         if model_matrix is None:
             model_matrix = ModelMatrix.from_transformations(offset, rotation, scale)
 
+        camera = app_context.camera
+        lights = app_context.lights
+
         shader.use()
 
         shader.set_mesh_attributes(self.vbo)
         shader.set_model_matrix(model_matrix)
-
-        camera = app_context.camera
-        lights = app_context.lights
-
         shader.set_uniform_int(len(lights), "u_light_count")
         shader.set_light_uniforms(lights)
-
         shader.set_camera_uniforms(camera)
+
+        time = np.float32(app_context.ticks / 1000.)
+        shader.set_time(time)
 
         glBindBuffer(GL_ARRAY_BUFFER, self.vbo)
 
@@ -109,6 +110,9 @@ class CubeMesh(Mesh):
                               [0., 1.],
                               [1., 1.],
                               [1., 0.], ] * 6)
+
+    # Coordinates for a cross-shaped UV map
+    #CUBE_UV_ARRAY2 =
 
     def __init__(self):
         super().__init__(4, 6)

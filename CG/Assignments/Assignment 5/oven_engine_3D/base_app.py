@@ -42,6 +42,7 @@ class BaseApp3D(ABC):
 
         self.clock = pg.time.Clock()
         self.ticks = 0
+        self.last_delta = 0.0
 
         self.mouse_delta = Vector2D.ZERO
 
@@ -62,6 +63,7 @@ class BaseApp3D(ABC):
     def _update(self):
         delta = self.clock.tick(self.target_fps) / 1000.0
         self.ticks += 1
+        self.last_delta = delta
 
         fps = 1. / delta
         self.avg_fps += fps
