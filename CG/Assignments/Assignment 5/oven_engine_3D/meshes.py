@@ -6,17 +6,24 @@ from oven_engine_3D.utils.geometry import Vector3D
 
 from oven_engine_3D.utils.matrices import ModelMatrix
 
+import pywavefront as pwf
 
 class Mesh(ABC):
-    def __init__(self, verts_per_face, face_count):
-        tmp = [(*p, *n, *u) for p, n, u in zip(self.vertex_positions, self.vertex_normals, self.vertex_uvs)]
-        tmp = list(chain.from_iterable(tmp))
+    def __init__(self, positions, normals, uvs, verts_per_face, face_count):
+        if not(normals is None and uvs is None):
+            tmp = [(*p, *n, *u) for p, n, u in zip(positions, normals, uvs)]
+            tmp = list(chain.from_iterable(tmp))
+        else:
+            tmp = positions
 
         self.__vbo = glGenBuffers(1)
         glBindBuffer(GL_ARRAY_BUFFER, self.__vbo)
         glBufferData(GL_ARRAY_BUFFER, np.array(tmp, dtype="float32"), GL_STATIC_DRAW)
         glBindBuffer(GL_ARRAY_BUFFER, 0)
 
+        self.vertex_positions = positions
+        self.vertex_normals = normals
+        self.vertex_uvs = uvs
         self.verts_per_face = verts_per_face
         self.face_count = face_count
 
@@ -43,28 +50,14 @@ class Mesh(ABC):
         glBindBuffer(GL_ARRAY_BUFFER, self.vbo)
 
         for k in range(self.face_count):
-            glDrawArrays(GL_TRIANGLE_FAN, k * self.verts_per_face, 4)
+            mode = GL_TRIANGLES if self.verts_per_face == 3 else GL_TRIANGLE_FAN
+            glDrawArrays(mode, k * self.verts_per_face, self.verts_per_face)
 
         glBindBuffer(GL_ARRAY_BUFFER, 0)
 
     @property
     def vbo(self):
         return self.__vbo
-
-    @property
-    @abstractmethod
-    def vertex_positions(self):
-        return []
-
-    @property
-    @abstractmethod
-    def vertex_normals(self):
-        return []
-
-    @property
-    @abstractmethod
-    def vertex_uvs(self):
-        return []
 
 class CubeMesh(Mesh):
     CUBE_POSITION_ARRAY = np.array(
@@ -115,19 +108,8 @@ class CubeMesh(Mesh):
     #CUBE_UV_ARRAY2 =
 
     def __init__(self):
-        super().__init__(4, 6)
-
-    @property
-    def vertex_positions(self):
-        return CubeMesh.CUBE_POSITION_ARRAY
-
-    @property
-    def vertex_normals(self):
-        return CubeMesh.CUBE_NORMAL_ARRAY
-
-    @property
-    def vertex_uvs(self):
-        return CubeMesh.CUBE_UV_ARRAY
+        super().__init__(CubeMesh.CUBE_POSITION_ARRAY, CubeMesh.CUBE_NORMAL_ARRAY, CubeMesh.CUBE_UV_ARRAY,
+                         4, 6)
 
 
 class PlaneMesh(Mesh):
@@ -142,16 +124,58 @@ class PlaneMesh(Mesh):
                                [1., 0.]])
 
     def __init__(self):
-        super().__init__(4, 1)
+        super().__init__(PlaneMesh.PLANE_POSITION_ARRAY, PlaneMesh.PLANE_NORMAL_ARRAY, PlaneMesh.PLANE_UV_ARRAY,
+                         4, 1)
 
-    @property
-    def vertex_positions(self):
-        return PlaneMesh.PLANE_POSITION_ARRAY
+class OBJMesh(Mesh):
+    def __init__(self, file_name):
+        scene = pwf.Wavefront(file_name, collect_faces=True)
+        # ASSUME 1 MESH
+        face_count = len(scene.mesh_list[0].faces)
+        # ASSUME 1 MATERIAL
+        material = scene.mesh_list[0].materials[0]
+        # ASSUME T2F_N3F_V3F FORMAT
+        verts = material.vertices
+        verts = [verts[i:i + 8] for i in range(0, len(verts), 8)]
+        verts = [[(v[0], v[1]), (v[4], v[3], v[2]), (v[7], v[6], v[5])] for v in verts]
 
-    @property
-    def vertex_normals(self):
-        return PlaneMesh.PLANE_NORMAL_ARRAY
+        positions = np.array([v[2] for v in verts])
+        normals = np.array([v[1] for v in verts])
+        uvs = np.array([v[0] for v in verts])
 
-    @property
-    def vertex_uvs(self):
-        return PlaneMesh.PLANE_UV_ARRAY
+        print(face_count)
+        print(material.vertex_format)
+
+        super().__init__(positions, normals, uvs,
+                         3, face_count)
+
+if __name__ == '__main__':
+    scene = pwf.Wavefront('../res/models/cylinder.obj', collect_faces=True)
+
+    print(*scene.mesh_list[0].__dict__.items(), sep="\n")
+    print()
+    print(*scene.mesh_list[0].materials[0].__dict__.items(), sep="\n")
+    print(scene.mesh_list[0].materials[0].vertex_format)
+
+
+    """# Iterate vertex data collected in each material
+    for name, material in scene.materials.items():
+        print(name)
+        # Contains the vertex format (string) such as "T2F_N3F_V3F"
+        # T2F, C3F, N3F and V3F may appear in this string
+        print(material.vertex_format)
+        verts = material.vertices
+        verts = [verts[i:i + 8] for i in range(0, len(verts), 8)]
+        verts = [[(v[0], v[1]), (v[2], v[3], v[4]), (v[5], v[6], v[7])] for v in verts]
+        verts = [[v[2], v[1], v[0]] for v in verts]
+
+        print(len(verts))
+        print(*verts, sep="\n")"""
+
+
+        # Contains the vertex list of floats in the format described above
+        #print(material.vertices)
+        # Material properties
+        #material.diffuse
+        #material.ambient
+        #material.texture

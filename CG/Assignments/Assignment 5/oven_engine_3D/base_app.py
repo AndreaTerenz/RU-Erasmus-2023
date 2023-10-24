@@ -65,21 +65,6 @@ class BaseApp3D(ABC):
         self.ticks += 1
         self.last_delta = delta
 
-        fps = 1. / delta
-        self.avg_fps += fps
-        self.ticks += 1
-
-        if self.ticks % 10 == 0:
-            self.avg_fps /= 10
-            fps_target_ratio = self.avg_fps / self.target_fps
-
-            fps_str = f"FPS: {fps:.2f} ({fps_target_ratio * 100:.2f}% of target)"
-            #pg.display.set_caption(f"{self.win_title} | {fps_str}")
-
-            self.avg_fps = 0.
-
-            #print(fps_str)
-
         self.update(delta)
 
         for obj in self.objects:
@@ -91,7 +76,9 @@ class BaseApp3D(ABC):
 
     def _display(self):
         glEnable(GL_DEPTH_TEST)
-        #glEnable(GL_CULL_FACE)
+        glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST)
+        glEnable(GL_CULL_FACE)
+        glCullFace(GL_FRONT)
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 

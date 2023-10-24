@@ -33,7 +33,7 @@ class MeshShader:
     def __init__(self,
                  vert_shader_path = DEFAULT_VERTEX, frag_shader_path = DEFAULT_FRAG, shader_folder : str = DEFAULT_SHADER_DIR,
                  diffuse_color=Color("white"), specular_color=(.2, .2, .2), ambient_color=(.1, .1, .1),
-                 shininess=30., unshaded=False, receive_ambient=True, diffuse_texture : [int|str] = "", vertID=-1, fragID=-1):
+                 shininess=5., unshaded=False, receive_ambient=True, diffuse_texture : [int|str] = "", vertID=-1, fragID=-1):
 
         print("Compiling shaders...")
 
@@ -53,10 +53,10 @@ class MeshShader:
         self.receive_ambient = receive_ambient
 
         self.diff_tex_id = -1
-
+        print("DIFFUSE TEXTURE:", diffuse_texture)
         if type(diffuse_texture) is int and diffuse_texture >= 0:
             self.diff_tex_id = diffuse_texture
-        elif diffuse_texture != "":
+        elif type(diffuse_texture) is str and diffuse_texture != "":
             self.diff_tex_id = TexturesManager.load_texture(diffuse_texture, filtering=GL_LINEAR)
 
         self.use()

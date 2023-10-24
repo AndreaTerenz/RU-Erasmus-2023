@@ -14,6 +14,10 @@ Requires Python 3.11 or higher
   - [ ] Cone
 - [ ] Light types (even just point vs directional)
 - [ ] Mesh Loading
+  - [x] ~~Mesh are loaded~~
+  - [ ] Parse vertex format and act accordingly
+  - [ ] Parse material
+  - [ ] There's some rotation mismatch....
 - [x] ~~UV coordinates in vbo~~
-- [ ] Find out why face culling is broken
+- [x] ~~Find out why face culling is broken~~
 - [x] ~~TEXTURES!!!!~~
