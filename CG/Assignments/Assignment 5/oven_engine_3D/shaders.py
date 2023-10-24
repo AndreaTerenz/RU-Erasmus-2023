@@ -1,9 +1,7 @@
 import os.path as path
-from itertools import chain
 from typing import Collection
 
 import OpenGL.GLUT
-import numpy as np
 from OpenGL.GL import *
 from OpenGL.GLU import *
 from OpenGL.error import GLError
@@ -32,16 +30,10 @@ class MeshShader:
     compiled_vert_shaders = {}
     compile_frag_shaders = {}
 
-    def __init__(self, positions=None, normals=None, uvs=None,
+    def __init__(self,
                  vert_shader_path = DEFAULT_VERTEX, frag_shader_path = DEFAULT_FRAG, shader_folder : str = DEFAULT_SHADER_DIR,
                  diffuse_color=Color("white"), specular_color=(.2, .2, .2), ambient_color=(.1, .1, .1),
-                 shininess=30., unshaded=False, receive_ambient=True, diffuse_texture = "", vbo=0):
-
-        assert (positions is None or normals is None) != (vbo == 0), "Must provide either positions and normals or a vbo"
-
-        self.diff_tex_id = -1
-        if diffuse_texture != "":
-            self.diff_tex_id = TexturesManager.load_texture(diffuse_texture, filtering=GL_LINEAR)
+                 shininess=30., unshaded=False, receive_ambient=True, diffuse_texture = ""):
 
         print("Compiling shaders...")
 
@@ -57,21 +49,13 @@ class MeshShader:
         self.positionLoc = self.enable_attrib_array("a_position")
         self.normalLoc = self.enable_attrib_array("a_normal")
         self.uvLoc = self.enable_attrib_array("a_uv")
-        self.uvs = uvs
-
-        self.pos_vbo = vbo
-
-        if self.pos_vbo == 0:
-            tmp = [(*p,*n) for p,n in zip(positions, normals)]
-            tmp = list(chain.from_iterable(tmp))
-
-            self.pos_vbo = glGenBuffers(1)
-            glBindBuffer(GL_ARRAY_BUFFER, self.pos_vbo)
-            glBufferData(GL_ARRAY_BUFFER, np.array(tmp, dtype="float32"), GL_STATIC_DRAW)
-            glBindBuffer(GL_ARRAY_BUFFER, 0)
 
         self.unshaded = unshaded
         self.receive_ambient = receive_ambient
+
+        self.diff_tex_id = -1
+        if diffuse_texture != "":
+            self.diff_tex_id = TexturesManager.load_texture(diffuse_texture, filtering=GL_LINEAR)
 
         self.use()
         self.set_material_diffuse(diffuse_color)
@@ -81,9 +65,6 @@ class MeshShader:
         self.set_unshaded(unshaded)
         self.set_receive_ambient(receive_ambient)
         self.set_shininess(shininess)
-
-        test = [Vector3D.UP, Vector3D.DOWN, Vector3D.LEFT, Vector3D.RIGHT]
-        self.set_uniform_vec3Ds(test, "u_many_pos", homogenous=False)
 
     def get_shader_program(self):
         vert_shader = MeshShader.compile_shader(self.vert_path, GL_VERTEX_SHADER, shader_folder=self.src_dir)
@@ -162,7 +143,6 @@ class MeshShader:
 
     def use(self):
         try:
-            self._on_use()
             glUseProgram(self.renderingProgramID)
         except OpenGL.error.GLError:
             print(glGetProgramInfoLog(self.renderingProgramID))
@@ -271,48 +251,27 @@ class MeshShader:
         glUniform1i(loc, texture_slot)
 
     def set_camera_uniforms(self, camera: 'Camera'):
-        self.set_projection_matrix(camera.projection_matrix)
-        self.set_view_matrix(camera.view_matrix)
+        self.set_uniform_matrix(camera.projection_matrix, "u_projection_matrix")
+        self.set_uniform_matrix(camera.view_matrix, "u_view_matrix")
         self.set_uniform_vec3D(camera.view_matrix.eye, "u_camera_position")
 
     def set_model_matrix(self, matrix):
-        self.set_uniform_matrix(matrix, self.model_mat_name)
+        self.set_uniform_matrix(matrix, "u_model_matrix")
 
-    def set_projection_matrix(self, matrix):
-        self.set_uniform_matrix(matrix, self.projection_mat_name)
+    def set_mesh_attributes(self, mesh_vbo: int):
+        values_per_attrib = [3, 3, 2]
+        locations = [self.positionLoc, self.normalLoc, self.uvLoc]
+        attrib_sizes = [sizeof(GLfloat)] * len(values_per_attrib)
 
-    def set_view_matrix(self, matrix):
-        self.set_uniform_matrix(matrix, self.view_mat_name)
+        total_size = sum([s * v for s, v in zip(attrib_sizes, values_per_attrib)])
 
-    def _on_use(self):
-        pass
+        glBindBuffer(GL_ARRAY_BUFFER, mesh_vbo)
 
-    def set_attribute_buffers(self):
-        values_per_attrib = 3
-        attribs_count = 6
-        attrib_size = sizeof(GLfloat)
-
-        def offset_to_size(offset, values = values_per_attrib, size = attrib_size):
-            return ctypes.c_void_p(offset * values * size)
-
-        glBindBuffer(GL_ARRAY_BUFFER, self.pos_vbo)
-
-        pos_offset_size = offset_to_size(0)
-        glVertexAttribPointer(self.positionLoc, values_per_attrib, GL_FLOAT, False, attribs_count * attrib_size, pos_offset_size)
-
-        norm_offset_size = offset_to_size(1)
-        glVertexAttribPointer(self.normalLoc, values_per_attrib, GL_FLOAT, False, attribs_count * attrib_size, norm_offset_size)
+        for idx in range(len(locations)):
+            offset_size = sum([s * v for s, v in zip(attrib_sizes[:idx], values_per_attrib[:idx])])
+            glVertexAttribPointer(locations[idx], values_per_attrib[idx], GL_FLOAT, False, total_size, ctypes.c_void_p(offset_size))
 
         glBindBuffer(GL_ARRAY_BUFFER, 0)
-
-    def set_uv_attribute(self):
-        if self.uvs is None:
-            return
-
-        glVertexAttribPointer(self.uvLoc, 2, GL_FLOAT, False, 0, self.uvs)
-
-    def bind_vbo(self):
-        glBindBuffer(GL_ARRAY_BUFFER, self.pos_vbo)
 
     def set_light_uniforms(self, lights: ["Light"|Collection]):
         if not isinstance(lights, Collection):
@@ -348,15 +307,3 @@ class MeshShader:
 
     def set_shininess(self, value: float):
         self.set_uniform_float(value, "u_material.shininess")
-
-    @property
-    def model_mat_name(self):
-        return "u_model_matrix"
-
-    @property
-    def projection_mat_name(self):
-        return "u_projection_matrix"
-
-    @property
-    def view_mat_name(self):
-        return "u_view_matrix"

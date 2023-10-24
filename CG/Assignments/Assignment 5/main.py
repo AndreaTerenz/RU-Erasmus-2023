@@ -1,20 +1,15 @@
 import math
-import pygame as pg
-import numpy as np
 
 from pygame import Color
 
 from game_entities import Player
 from oven_engine_3D.base_app import BaseApp3D
 from oven_engine_3D.entities import Plane, Cube
-from oven_engine_3D.light import Light
 from oven_engine_3D.shaders import MeshShader
-from oven_engine_3D.utils.geometry import Vector3D, Vector2D
-from oven_engine_3D.utils.gl3d import PLANE_POSITION_ARRAY, PLANE_NORMAL_ARRAY, CUBE_NORMAL_ARRAY, CUBE_POSITION_ARRAY, \
-    CUBE_UV_ARRAY
+from oven_engine_3D.utils.geometry import Vector3D
 
 
-class Assignment3(BaseApp3D):
+class Assignment5(BaseApp3D):
     WALL_CELL = 0
     EMPTY_CELL = 1
     START_CELL = 2
@@ -31,11 +26,11 @@ class Assignment3(BaseApp3D):
 
         self.objects.append(self.player)
 
-        cubeMat = MeshShader(positions=CUBE_POSITION_ARRAY, normals=CUBE_NORMAL_ARRAY, uvs=CUBE_UV_ARRAY,
-                             diffuse_color=Color("red"), diffuse_texture="res/img1.png")
+        planeMat = MeshShader(diffuse_color=Color("cyan"), diffuse_texture="res/img1.png")
+        cubeMat = MeshShader(diffuse_color=Color("red"), diffuse_texture="res/img1.png")
 
-        self.objects.append(Plane(self, Vector3D.DOWN, color=Color("white"), scale=50.))
-        self.objects.append(Cube(self, shader=cubeMat, origin=Vector3D.UP*2. + Vector3D.FORWARD*4.))
+        self.objects.append(Plane(self, Vector3D.DOWN, shader=cubeMat, scale=50.))
+        self.objects.append(Cube(self, shader=planeMat, origin=Vector3D.UP*2. + Vector3D.FORWARD*4.))
 
     def update(self, delta):
         pass
@@ -48,5 +43,5 @@ class Assignment3(BaseApp3D):
 
 
 if __name__ == '__main__':
-    prog = Assignment3()
+    prog = Assignment5()
     prog.run()

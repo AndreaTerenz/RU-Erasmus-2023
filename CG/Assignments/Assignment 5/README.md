@@ -14,4 +14,6 @@ Requires Python 3.11 or higher
   - [ ] Cone
 - [ ] Light types (even just point vs directional)
 - [ ] Mesh Loading
-- [ ] TEXTURES!!!!
+- [x] ~~UV coordinates in vbo~~
+- [ ] Find out why face culling is broken
+- [x] ~~TEXTURES!!!!~~

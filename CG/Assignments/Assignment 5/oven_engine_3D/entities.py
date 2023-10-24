@@ -1,11 +1,10 @@
 from abc import abstractmethod, ABC
-
+from pygame import Color
+from oven_engine_3D.meshes import CubeMesh, PlaneMesh, Mesh
 # from oven_engine_3D.Geometry import Vector3D
 from oven_engine_3D.utils.matrices import ModelMatrix
 from oven_engine_3D.shaders import MeshShader
-from oven_engine_3D.utils.geometry import Vector3D
-from oven_engine_3D.utils.gl3d import CUBE_POSITION_ARRAY, CUBE_NORMAL_ARRAY, draw_cube, PLANE_POSITION_ARRAY, \
-    PLANE_NORMAL_ARRAY, euler_from_vectors, draw_plane, CUBE_UV_ARRAY, PLANE_UV_ARRAY
+from oven_engine_3D.utils.geometry import Vector3D, euler_from_vectors
 
 
 class Entity(ABC):
@@ -67,31 +66,35 @@ class Entity(ABC):
 
 
 class MeshEntity(Entity):
-    def __init__(self, parent_app, origin=Vector3D.ZERO, rotation=Vector3D.ZERO, scale=Vector3D.ONE, shader=None):
+
+    def __init__(self, parent_app, mesh: Mesh, origin=Vector3D.ZERO, rotation=Vector3D.ZERO, scale=Vector3D.ONE, color=Color("magenta"), shader=None):
         super().__init__(parent_app, origin, rotation, scale)
 
+        if shader is None:
+            shader = MeshShader(diffuse_color=color)
+
         self.shader = shader
+        self.mesh = mesh
 
     def modelmat_update(self):
         if self.shader is not None:
             self.shader.set_model_matrix(self.model_matrix)
 
-    @abstractmethod
     def draw(self):
+        self.mesh.draw(self.parent_app, shader=self.shader, model_matrix=self.model_matrix)
+
+    def _update(self, delta):
+        pass
+
+    def handle_event(self, ev):
         pass
 
 
 class Cube(MeshEntity):
 
-    def __init__(self, parent_app, origin=Vector3D.ZERO, rotation=Vector3D.ZERO, scale=Vector3D.ONE, color=(1.0, 0.0, 1.0), shader=None):
-        if shader is None:
-            shader = MeshShader(positions=CUBE_POSITION_ARRAY, normals=CUBE_NORMAL_ARRAY, uvs=CUBE_UV_ARRAY, diffuse_color=color)
+    def __init__(self, parent_app, origin=Vector3D.ZERO, rotation=Vector3D.ZERO, scale=Vector3D.ONE, color=Color("magenta"), shader=None):
+        super().__init__(parent_app, mesh=CubeMesh(), origin=origin, rotation=rotation, scale=scale, color=color, shader=shader)
 
-        super().__init__(parent_app, origin, rotation=rotation, scale=scale, shader=shader)
-
-    def draw(self):
-        draw_cube(app_context=self.parent_app, shader=self.shader,
-                  model_matrix=self.model_matrix)
 
     def handle_event(self, ev):
         pass
@@ -104,20 +107,14 @@ class Plane(MeshEntity):
     def __init__(self, parent_app, origin=Vector3D.ZERO, color=(1.0, 0.0, 1.0), normal=Vector3D.UP, scale=Vector3D.ONE,
                  shader=None):
         rotation = Vector3D(*euler_from_vectors(normal))
-        if shader is None:
-            shader = MeshShader(positions=PLANE_POSITION_ARRAY, normals=PLANE_NORMAL_ARRAY, uvs=PLANE_UV_ARRAY, diffuse_color=color)
 
-        super().__init__(parent_app, origin, rotation=rotation, scale=scale, shader=shader)
+        super().__init__(parent_app, mesh=PlaneMesh(), origin=origin, rotation=rotation, scale=scale, color=color, shader=shader)
 
     def point_to(self, _dir: Vector3D):
         rotation = Vector3D(*euler_from_vectors(_dir))
         self.rotate(rotation.x, Vector3D.RIGHT)
         self.rotate(rotation.y, Vector3D.UP)
         self.rotate(rotation.z, Vector3D.FORWARD)
-
-    def draw(self):
-        draw_plane(self.parent_app,
-                   model_matrix=self.model_matrix, shader=self.shader)
 
     def _update(self, delta):
         pass
