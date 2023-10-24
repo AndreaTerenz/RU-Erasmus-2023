@@ -23,11 +23,10 @@ class Assignment5(BaseApp3D):
 
         self.camera = self.player.camera
         self.lights.append(self.player.light)
-
         self.objects.append(self.player)
 
         planeMat = MeshShader(diffuse_color=Color("cyan"), diffuse_texture="res/img1.png")
-        cubeMat = MeshShader(diffuse_color=Color("red"), diffuse_texture="res/img1.png")
+        cubeMat = planeMat.variation(diffuse_color=Color("red"), unshaded=True)
 
         self.objects.append(Plane(self, Vector3D.DOWN, shader=cubeMat, scale=50.))
         self.objects.append(Cube(self, shader=planeMat, origin=Vector3D.UP*2. + Vector3D.FORWARD*4.))

@@ -33,15 +33,14 @@ class MeshShader:
     def __init__(self,
                  vert_shader_path = DEFAULT_VERTEX, frag_shader_path = DEFAULT_FRAG, shader_folder : str = DEFAULT_SHADER_DIR,
                  diffuse_color=Color("white"), specular_color=(.2, .2, .2), ambient_color=(.1, .1, .1),
-                 shininess=30., unshaded=False, receive_ambient=True, diffuse_texture = ""):
+                 shininess=30., unshaded=False, receive_ambient=True, diffuse_texture : [int|str] = "", vertID=-1, fragID=-1):
 
         print("Compiling shaders...")
 
-        self.vert_path = vert_shader_path
-        self.frag_path = frag_shader_path
-        self.src_dir = shader_folder
+        v = vertID if vertID != -1 else vert_shader_path
+        f = fragID if fragID != -1 else frag_shader_path
 
-        self.renderingProgramID = self.get_shader_program()
+        self.renderingProgramID, self.vert_id, self.frag_id = MeshShader.get_shader_program(v, f, shader_folder)
 
         self.uniform_locations = {}
         self.uniform_values = {}
@@ -54,7 +53,10 @@ class MeshShader:
         self.receive_ambient = receive_ambient
 
         self.diff_tex_id = -1
-        if diffuse_texture != "":
+
+        if type(diffuse_texture) is int and diffuse_texture >= 0:
+            self.diff_tex_id = diffuse_texture
+        elif diffuse_texture != "":
             self.diff_tex_id = TexturesManager.load_texture(diffuse_texture, filtering=GL_LINEAR)
 
         self.use()
@@ -66,19 +68,45 @@ class MeshShader:
         self.set_receive_ambient(receive_ambient)
         self.set_shininess(shininess)
 
-    def get_shader_program(self):
-        vert_shader = MeshShader.compile_shader(self.vert_path, GL_VERTEX_SHADER, shader_folder=self.src_dir)
-        frag_shader = MeshShader.compile_shader(self.frag_path, GL_FRAGMENT_SHADER, shader_folder=self.src_dir)
+    def duplicate(self):
+        return self.variation()
+
+    def variation(self, **kwargs):
+        return MeshShader(
+            diffuse_color=kwargs.get("diffuse_color", self.get_uniform_color("u_material.diffuse")),
+            specular_color=kwargs.get("specular_color", self.get_uniform_color("u_material.specular")),
+            ambient_color=kwargs.get("ambient_color", self.get_uniform_color("u_material.ambient")),
+            shininess=kwargs.get("shininess", self.get_uniform_float("u_material.shininess")),
+            unshaded=kwargs.get("unshaded", self.unshaded),
+            receive_ambient=kwargs.get("receive_ambient", self.receive_ambient),
+            diffuse_texture=kwargs.get("diffuse_texture", self.diff_tex_id),
+            vertID=self.vert_id,
+            fragID=self.frag_id
+        )
+
+    @staticmethod
+    def get_shader_program(vert_path : [int|str], frag_path : [int|str], src_dir):
+        if type(vert_path) == str:
+            vert_shader = MeshShader.compile_shader(vert_path, GL_VERTEX_SHADER, shader_folder=src_dir)
+        else:
+            vert_shader = vert_path
+
+        if type(frag_path) == str:
+            frag_shader = MeshShader.compile_shader(frag_path, GL_FRAGMENT_SHADER, shader_folder=src_dir)
+        else:
+            frag_shader = frag_path
 
         progID = glCreateProgram()
 
         assert progID != 0, print("Couldn't create program")
+
         glAttachShader(progID, vert_shader)
         glAttachShader(progID, frag_shader)
         glLinkProgram(progID)
+
         assert glGetProgramiv(progID, GL_LINK_STATUS) == 1, print("Couldn't link program")
 
-        return progID
+        return progID, vert_shader, frag_shader
 
     @staticmethod
     def compile_shader(shader_file: str, shader_type: int, use_fallback = True, shader_folder: str = ""):
@@ -107,8 +135,7 @@ class MeshShader:
         except FileNotFoundError:
             print(f"Couldn't find shader file: '{shader_path}'")
 
-            if not use_fallback:
-                return -1
+            assert use_fallback, print("Fallback shader disabled - compilation failed")
 
             print("Using fallback shader")
             fallback_path = ""
@@ -121,9 +148,7 @@ class MeshShader:
 
         glCompileShader(shader_id)
         result = glGetShaderiv(shader_id, GL_COMPILE_STATUS)
-        if result != 1:  # shader didn't compile
-            print(f"Couldn't compile vertex shader\nShader compilation Log:\n{str(glGetShaderInfoLog(shader_id))}")
-            return -1
+        assert result == 1, print(f"Couldn't compile vertex shader\nShader compilation Log:\n{str(glGetShaderInfoLog(shader_id))}")
 
         lookup[shader_file] = shader_id
 
@@ -165,6 +190,10 @@ class MeshShader:
     def get_uniform_float(self, uniform_name, count = 1):
         return self.get_uniform_value(uniform_name, ctypes.c_float, count)
 
+    def get_uniform_color(self, uniform_name):
+        tmp = self.get_uniform_float(uniform_name, 4)
+        return Color(*(int(v*255.) for v in tmp))
+
     def get_uniform_value(self, uniform_name, datatype, count = 1):
         loc = self.get_uniform_loc(uniform_name)
         output = (datatype * count)()
@@ -176,7 +205,6 @@ class MeshShader:
 
         return list(output) if count > 1 else output[0]
 
-    #@uniform_updater
     def set_uniform_matrix(self, matrix: Matrix, uniform_name):
         loc = self.get_uniform_loc(uniform_name)
         glUniformMatrix4fv(loc, 1, True, matrix.values)
@@ -193,20 +221,12 @@ class MeshShader:
 
         return color
 
-    #@uniform_updater
     def set_uniform_color(self, color, uniform_name):
         loc = self.get_uniform_loc(uniform_name)
         color = MeshShader.__get_color(color)
 
         glUniform4f(loc, *color)
 
-    def set_uniform_colors(self, colors: Collection, uniform_name, count = 1):
-        assert len(colors) >= count, "Tried to set too few values for uniform!"
-
-        for color in colors:
-            self.set_uniform_color(color, uniform_name)
-
-    #@uniform_updater
     def set_uniform_vec3D(self, vector: Vector3D, uniform_name, homogenous=True, w=1.0):
         loc = self.get_uniform_loc(uniform_name)
 
@@ -215,18 +235,12 @@ class MeshShader:
         else:
             glUniform3f(loc, *vector)
 
-    def set_uniform_vec3Ds(self, vectors: Collection[Vector3D], uniform_name, homogenous=True, w=1.0):
-        for vector in vectors:
-            self.set_uniform_vec3D(vector, uniform_name, homogenous, w)
-
-    #@uniform_updater
     def set_uniform_float(self, value: [float|Collection], uniform_name):
         count = 1 if isinstance(value, float) else len(value)
 
         loc = self.get_uniform_loc(uniform_name)
         glUniform1fv(loc, count, value)
 
-    #@uniform_updater
     def set_uniform_int(self, value: [int|Collection], uniform_name):
         count = 1 if isinstance(value, int) else len(value)
 
