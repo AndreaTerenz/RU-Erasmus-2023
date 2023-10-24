@@ -9,7 +9,6 @@ from oven_engine_3D.base_app import BaseApp3D
 from oven_engine_3D.entities import Plane, Cube
 from oven_engine_3D.light import Light
 from oven_engine_3D.shaders import MeshShader
-from oven_engine_3D.utils.collisions import LineCollider
 from oven_engine_3D.utils.geometry import Vector3D, Vector2D
 from oven_engine_3D.utils.gl3d import PLANE_POSITION_ARRAY, PLANE_NORMAL_ARRAY, CUBE_NORMAL_ARRAY, CUBE_POSITION_ARRAY, \
     CUBE_UV_ARRAY
@@ -36,7 +35,7 @@ class Assignment3(BaseApp3D):
                              diffuse_color=Color("red"), diffuse_texture="res/img1.png")
 
         self.objects.append(Plane(self, Vector3D.DOWN, color=Color("white"), scale=50.))
-        self.objects.append(Cube(self, shader=cubeMat, origin=Vector3D.UP + Vector3D.FORWARD*4.))
+        self.objects.append(Cube(self, shader=cubeMat, origin=Vector3D.UP*2. + Vector3D.FORWARD*4.))
 
     def update(self, delta):
         pass

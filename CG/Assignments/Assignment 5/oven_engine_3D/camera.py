@@ -4,7 +4,7 @@ import numpy as np
 import pygame as pg
 
 from oven_engine_3D.entities import Entity
-from oven_engine_3D.matrices import ProjectionMatrix, ViewMatrix
+from oven_engine_3D.utils.matrices import ProjectionMatrix, ViewMatrix
 from oven_engine_3D.utils.geometry import Vector3D, Vector2D
 
 

@@ -4,7 +4,7 @@ from pygame.locals import *
 
 from oven_engine_3D.shaders import *
 from oven_engine_3D.camera import *
-from oven_engine_3D.utils.geometry import Vector3D, Vector2D
+from oven_engine_3D.utils.geometry import Vector2D
 
 from OpenGL.GL import *
 

@@ -8,10 +8,10 @@ from OpenGL.GL import *
 from OpenGL.GLU import *
 from OpenGL.error import GLError
 from pygame import Color
-import pygame.image as img
 
-from oven_engine_3D.matrices import Matrix
-from oven_engine_3D.utils.geometry import Vector3D, Vector2D
+from oven_engine_3D.utils.matrices import Matrix
+from oven_engine_3D.utils.textures import TexturesManager
+from oven_engine_3D.utils.geometry import Vector3D
 
 DEFAULT_SHADER_DIR = path.join("oven_engine_3D", "Shader Files")
 DEFAULT_VERTEX = "simple3D.vert"
@@ -41,15 +41,7 @@ class MeshShader:
 
         self.diff_tex_id = -1
         if diffuse_texture != "":
-            surf = img.load(diffuse_texture)
-            tex_str = img.tostring(surf, "RGBA", 1)
-            size = Vector2D(surf.get_size())
-
-            self.diff_tex_id = glGenTextures(1)
-            glBindTexture(GL_TEXTURE_2D, self.diff_tex_id)
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, size.x, size.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, tex_str)
+            self.diff_tex_id = TexturesManager.load_texture(diffuse_texture, filtering=GL_LINEAR)
 
         print("Compiling shaders...")
 
@@ -86,7 +78,6 @@ class MeshShader:
         self.set_material_specular(specular_color)
         self.set_material_ambient(ambient_color)
         self.set_diffuse_texture(self.diff_tex_id)
-        self.set_uniform_bool((self.diff_tex_id > 0), "u_sample_texture")
         self.set_unshaded(unshaded)
         self.set_receive_ambient(receive_ambient)
         self.set_shininess(shininess)
@@ -269,6 +260,16 @@ class MeshShader:
         value = [int(v) for v in value]
         self.set_uniform_int(value, uniform_name)
 
+    def set_uniform_sampler2D(self, texture_id: int, uniform_name, texture_slot = 0):
+        if texture_id <= 0:
+            return
+
+        loc = self.get_uniform_loc(uniform_name)
+
+        glActiveTexture(GL_TEXTURE0 + texture_slot)
+        glBindTexture(GL_TEXTURE_2D, texture_id)
+        glUniform1i(loc, texture_slot)
+
     def set_camera_uniforms(self, camera: 'Camera'):
         self.set_projection_matrix(camera.projection_matrix)
         self.set_view_matrix(camera.view_matrix)
@@ -325,40 +326,29 @@ class MeshShader:
             self.set_uniform_color(l.ambient, f"u_lights[{idx}].ambient")
 
     def set_material_diffuse(self, color):
-        self.set_uniform_color(color, "u_material_diffuse")
+        self.set_uniform_color(color, "u_material.diffuse")
 
     def set_diffuse_texture(self, diff_tex_id):
-        if diff_tex_id <= 0:
-            return
-
-        glActiveTexture(GL_TEXTURE0)
-        glBindTexture(GL_TEXTURE_2D, diff_tex_id)
-        loc = self.get_uniform_loc("u_tex")
-        glUniform1i(loc, 0)
+        self.set_uniform_bool((diff_tex_id > 0), "u_material.has_texture")
+        self.set_uniform_sampler2D(diff_tex_id, "u_material.diffuse_tex")
 
     def set_material_specular(self, color):
-        self.set_uniform_color(color, "u_material_specular")
+        self.set_uniform_color(color, "u_material.specular")
 
     def set_material_ambient(self, color):
-        self.set_uniform_color(color, "u_material_ambient")
-
-    def set_ambient(self, color):
-        self.set_uniform_color(color, "u_ambient")
+        self.set_uniform_color(color, "u_material.ambient")
 
     def set_unshaded(self, state: bool):
         self.unshaded = state
-        self.set_uniform_bool(state, "unshaded")
+        self.set_uniform_bool(state, "u_material.unshaded")
 
     def set_receive_ambient(self, state: bool):
         self.receive_ambient = state
-        self.set_uniform_bool(state, "receive_ambient")
+        self.set_uniform_bool(state, "u_material.receive_ambient")
 
     def set_shininess(self, value: float):
-        self.set_uniform_float(value, "u_shininess")
+        self.set_uniform_float(value, "u_material.shininess")
 
-    """def set_time(self, value: float):
-        self.set_uniform_float(value, "u_time")
-    """
     @property
     def model_mat_name(self):
         return "u_model_matrix"

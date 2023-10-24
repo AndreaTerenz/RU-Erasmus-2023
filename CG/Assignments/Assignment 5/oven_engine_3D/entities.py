@@ -1,11 +1,7 @@
-import math
 from abc import abstractmethod, ABC
 
-from OpenGL.GL import *
-from sympy import appellf1
-
 # from oven_engine_3D.Geometry import Vector3D
-from oven_engine_3D.matrices import ModelMatrix
+from oven_engine_3D.utils.matrices import ModelMatrix
 from oven_engine_3D.shaders import MeshShader
 from oven_engine_3D.utils.geometry import Vector3D
 from oven_engine_3D.utils.gl3d import CUBE_POSITION_ARRAY, CUBE_NORMAL_ARRAY, draw_cube, PLANE_POSITION_ARRAY, \

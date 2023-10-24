@@ -2,37 +2,33 @@ from OpenGL.GL import *
 from OpenGL.constant import IntConstant
 from oven_engine_3D.utils.geometry import Vector2D
 from PIL import Image
+import pygame.image as img
 
 import numpy as np
 
 class TexturesManager:
-    def __init__(self):
-        self.textures = {}
+    textures = {}
 
-    def load_texture(self, path, filtering=GL_NEAREST, clamping=GL_REPEAT, color_format=GL_RGBA8, pixel_format=GL_RGBA):
+    @staticmethod
+    def load_texture(path, filtering=GL_NEAREST, clamping=GL_REPEAT, color_format=GL_RGBA, pixel_format=GL_RGBA):
         print(f"Loading texture from '{path}'...", end="")
 
-        if path in self.textures.keys():
+        if path in TexturesManager.textures.keys():
             print("done (texture already loaded)")
-            return self.textures[path]
+            return TexturesManager.textures[path]
 
-        try:
-            text = Image.open(path)
-        except IOError:
-            print(f"Failed to load texture '{path}'")
-            return -1
+        surf = img.load(path)
+        tex_str = img.tostring(surf, "RGBA", 1)
+        size = Vector2D(surf.get_size())
 
         if not (filtering in [GL_NEAREST, GL_LINEAR]):
             filtering = GL_NEAREST
 
-        textData = np.array(list(text.getdata()))
-        text.close()
-
         textID = glGenTextures(1)
-        glPixelStorei(GL_UNPACK_ALIGNMENT, 1)
+
         glBindTexture(GL_TEXTURE_2D, textID)
-        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filtering)
-        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filtering)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filtering)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filtering)
 
         if type(clamping) is IntConstant:
             clamping = (clamping, clamping)
@@ -45,20 +41,24 @@ class TexturesManager:
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0)
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0)
 
-        glTexImage2D(GL_TEXTURE_2D, 0, color_format, text.width, text.height, 0, pixel_format, GL_UNSIGNED_BYTE, textData)
+        glTexImage2D(GL_TEXTURE_2D, 0, color_format, size.x, size.y, 0, pixel_format, GL_UNSIGNED_BYTE, tex_str)
 
         textID = int(textID)
 
         if textID != -1:
-            self.textures[path] = textID
+            TexturesManager.textures[path] = textID
+
+        print("done")
 
         return textID
 
-    def is_texture_valid(self, tex):
-        return tex in self.textures.values()
+    @staticmethod
+    def is_texture_valid(tex):
+        return tex in TexturesManager.textures.values()
 
-    def unload_texture(self, textureID: int):
-        if not self.is_texture_valid(textureID):
+    @staticmethod
+    def unload_texture(textureID: int):
+        if not TexturesManager.is_texture_valid(textureID):
             print(f"Invalid texture ID {textureID}")
             return False
 

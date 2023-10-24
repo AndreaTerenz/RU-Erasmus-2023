@@ -35,6 +35,8 @@ class Player(Entity):
             pg.K_s: Vector3D.BACKWARD,
             pg.K_a: Vector3D.RIGHT,
             pg.K_d: Vector3D.LEFT,
+            pg.K_q: Vector3D.UP,
+            pg.K_e: Vector3D.DOWN,
         }
 
         parent_app.add_keys(self.slide_keys.keys())

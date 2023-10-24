@@ -1,19 +1,15 @@
-import math
-
 import numpy as np
 from OpenGL.GL import *
-from pygame import Color
 
-from oven_engine_3D.matrices import ModelMatrix
-from oven_engine_3D.shaders import MeshShader
+from oven_engine_3D.utils.matrices import ModelMatrix
 from oven_engine_3D.utils.geometry import Vector3D, Vector2D, euler_from_vectors
 
 CUBE_POSITION_ARRAY = np.array(
         # back
-        [[-1, -1, -1],
-         [-1,  1, -1],
+        [[ 1, -1, -1],
          [ 1,  1, -1],
-         [ 1, -1, -1],
+         [-1,  1, -1],
+         [-1, -1, -1],
         # front
         [-1, -1,  1],
         [-1,  1,  1],
@@ -21,24 +17,24 @@ CUBE_POSITION_ARRAY = np.array(
         [ 1, -1,  1],
         # bottom
         [-1, -1, -1],
-        [ 1, -1, -1],
-        [ 1, -1,  1],
         [-1, -1,  1],
+        [ 1, -1,  1],
+        [ 1, -1, -1],
         # top
+        [-1,  1,  1],
         [-1,  1, -1],
         [ 1,  1, -1],
         [ 1,  1,  1],
-        [-1,  1,  1],
         # left
         [-1, -1, -1],
-        [-1, -1,  1],
-        [-1,  1,  1],
         [-1,  1, -1],
+        [-1,  1,  1],
+        [-1, -1,  1],
         # right
-        [ 1, -1, -1],
         [ 1, -1,  1],
         [ 1,  1,  1],
-        [ 1,  1, -1]])
+        [ 1,  1, -1],
+        [ 1, -1, -1],])
 
 CUBE_NORMAL_ARRAY = np.array([list(Vector3D.BACKWARD)]*4+
                               [list(Vector3D.FORWARD)]*4+
@@ -47,30 +43,10 @@ CUBE_NORMAL_ARRAY = np.array([list(Vector3D.BACKWARD)]*4+
                               [list(Vector3D.LEFT)]*4+
                               [list(Vector3D.RIGHT)]*4)
 
-CUBE_UV_ARRAY = np.array([1., 0., # back
-                          1., 1.,
-                          0., 1.,
-                          0., 0.,
-                          0., 0., # front
+CUBE_UV_ARRAY = np.array([0., 0.,
                           0., 1.,
                           1., 1.,
-                          1., 0.,
-                          0., 0., # bottom
-                          0., 1.,
-                          1., 1.,
-                          1., 0.,
-                          0., 0., # top
-                          0., 1.,
-                          1., 1.,
-                          1., 0.,
-                          0., 0., # left
-                          1., 0.,
-                          1., 1.,
-                          0., 1.,
-                          1., 0., # right
-                          0., 0.,
-                          0., 1.,
-                          1., 1.,])
+                          1., 0.,]*6)
 
 PLANE_POSITION_ARRAY = np.array([[-1, 0, -1],
                                  [-1, 0,  1],
@@ -118,7 +94,7 @@ def draw_mesh(app_context: 'BaseApp3D', shader, verts_per_face, face_count,
     shader.set_light_uniforms(lights)
 
     shader.set_camera_uniforms(camera)
-    shader.set_ambient(ambient_color)
+    #shader.set_ambient(ambient_color)
 
     shader.bind_vbo()
     for k in range(face_count):
