@@ -1,6 +1,6 @@
 from abc import abstractmethod, ABC
 from pygame import Color
-from oven_engine_3D.meshes import CubeMesh, PlaneMesh, Mesh
+from oven_engine_3D.meshes import CubeMesh, PlaneMesh, Mesh, OBJMesh
 # from oven_engine_3D.Geometry import Vector3D
 from oven_engine_3D.utils.matrices import ModelMatrix
 from oven_engine_3D.shaders import MeshShader
@@ -67,13 +67,17 @@ class Entity(ABC):
 
 class MeshEntity(Entity):
 
-    def __init__(self, parent_app, mesh: Mesh, origin=Vector3D.ZERO, rotation=Vector3D.ZERO, scale=Vector3D.ONE, color=Color("magenta"), shader=None):
+    def __init__(self, parent_app, mesh: [str|Mesh], origin=Vector3D.ZERO, rotation=Vector3D.ZERO, scale=Vector3D.ONE, color=Color("magenta"), shader=None):
         super().__init__(parent_app, origin, rotation, scale)
 
         if shader is None:
             shader = MeshShader(diffuse_color=color)
 
         self.shader = shader
+
+        if type(mesh) is str:
+            mesh = OBJMesh.load(mesh)
+
         self.mesh = mesh
 
     def modelmat_update(self):

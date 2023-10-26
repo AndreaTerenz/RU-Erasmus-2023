@@ -6,7 +6,7 @@ from game_entities import Player
 from oven_engine_3D.base_app import BaseApp3D
 from oven_engine_3D.entities import Plane, Cube, MeshEntity
 from oven_engine_3D.meshes import OBJMesh
-from oven_engine_3D.shaders import MeshShader
+from oven_engine_3D.shaders import MeshShader, DEFAULT_FRAG
 from oven_engine_3D.utils.geometry import Vector3D
 
 
@@ -20,27 +20,25 @@ class Assignment5(BaseApp3D):
         super().__init__(fullscreen=True, ambient_color=Color("white"), clear_color=Color(30, 30, 30), update_camera=False)
 
         ratio = self.win_size.aspect_ratio
-        self.player = Player(self, camera_params={"ratio": ratio, "fov": math.tau/6., "near": .1, "far": 80.})
+        self.player = Player(self, rot_y=math.tau/2., camera_params={"ratio": ratio, "fov": math.tau/6., "near": .1, "far": 80.})
 
         self.camera = self.player.camera
         self.lights.append(self.player.light)
         self.objects.append(self.player)
 
+        self.objects.append(Plane(self, origin=Vector3D.DOWN * 5., scale=30., color=Color("white")))
+
         mat1 = MeshShader(diffuse_color=Color("cyan"), diffuse_texture="res/textures/img1.png", unshaded=True)
-        mat2 = mat1.variation(diffuse_color=Color("red"), fragID="funky.frag", unshaded=False)
-        mat3 = mat2.variation(diffuse_texture="")
+        mat2 = mat1.variation(diffuse_color=Color("red"), unshaded=False, diffuse_texture="")
+        mat3 = mat1.variation(diffuse_texture="res/textures/cubemap2.png", diffuse_color=Color("yellow"))
+        mat4 = mat2.variation(diffuse_texture="")
+        mat5 = mat2.variation(diffuse_texture="", fragID="funky.frag")
 
-        self.objects.append(Plane(self, Vector3D.DOWN, shader=mat2, scale=50.))
-        self.objects.append(Cube(self, shader=mat1, origin=Vector3D.UP*2. + Vector3D.FORWARD*4.))
-
-        mesh1 = OBJMesh("res/models/monke.obj")
-        #mesh2 = OBJMesh("res/models/bunny.obj")
-        #mesh3 = OBJMesh("res/models/teapot.obj")
-        mat = MeshShader(diffuse_color=Color("yellow"), shininess=140.)
-
-        self.objects.append(MeshEntity(mesh=mesh1, parent_app=self, shader=mat))
-        #self.objects.append(MeshEntity(mesh=mesh2, parent_app=self, shader=mat3))
-        #self.objects.append(MeshEntity(mesh=mesh3, parent_app=self, shader=mat.variation(diffuse_color=Color("magenta"))))
+        self.objects.append(MeshEntity(mesh="res/models/cube.obj", parent_app=self, shader=mat1))
+        self.objects.append(MeshEntity(mesh="res/models/teapot.obj", parent_app=self, origin=Vector3D.RIGHT*3. + Vector3D.UP * 2., shader=mat2))
+        self.objects.append(MeshEntity(mesh="res/models/cube.obj", parent_app=self, origin=Vector3D.LEFT*3. - Vector3D.UP * 2., shader=mat3))
+        self.objects.append(MeshEntity(mesh="res/models/bunny.obj", parent_app=self, shader=mat4))
+        self.objects.append(MeshEntity(mesh="res/models/monke.obj", parent_app=self, shader=mat5))
 
     def update(self, delta):
         pass

@@ -11,7 +11,7 @@ from oven_engine_3D.utils.matrices import Matrix
 from oven_engine_3D.utils.textures import TexturesManager
 from oven_engine_3D.utils.geometry import Vector3D
 
-DEFAULT_SHADER_DIR = path.join("oven_engine_3D", "Shader Files")
+DEFAULT_SHADER_DIR = "shaders"
 DEFAULT_VERTEX = "simple3D.vert"
 DEFAULT_FRAG = "simple3D.frag"
 
@@ -28,14 +28,12 @@ def uniform_updater(func):
 
 class MeshShader:
     compiled_vert_shaders = {}
-    compile_frag_shaders = {}
+    compiled_frag_shaders = {}
 
     def __init__(self,
                  vert_shader_path = DEFAULT_VERTEX, frag_shader_path = DEFAULT_FRAG, shader_folder : str = DEFAULT_SHADER_DIR,
                  diffuse_color=Color("white"), specular_color=(.2, .2, .2), ambient_color=(.1, .1, .1),
                  shininess=5., unshaded=False, receive_ambient=True, diffuse_texture : [int|str] = "", vertID=-1, fragID=-1):
-
-        print("Compiling shaders...")
 
         v = vertID if vertID != -1 else vert_shader_path
         f = fragID if fragID != -1 else frag_shader_path
@@ -53,7 +51,6 @@ class MeshShader:
         self.receive_ambient = receive_ambient
 
         self.diff_tex_id = -1
-        print("DIFFUSE TEXTURE:", diffuse_texture)
         if type(diffuse_texture) is int and diffuse_texture >= 0:
             self.diff_tex_id = diffuse_texture
         elif type(diffuse_texture) is str and diffuse_texture != "":
@@ -68,10 +65,15 @@ class MeshShader:
         self.set_receive_ambient(receive_ambient)
         self.set_shininess(shininess)
 
+        print()
+
     def duplicate(self):
         return self.variation()
 
     def variation(self, **kwargs):
+        print("Shader variation:\n\t", end="")
+        print(*kwargs.items(), sep="\n\t")
+
         return MeshShader(
             diffuse_color=kwargs.get("diffuse_color", self.get_uniform_color("u_material.diffuse")),
             specular_color=kwargs.get("specular_color", self.get_uniform_color("u_material.specular")),
@@ -86,6 +88,8 @@ class MeshShader:
 
     @staticmethod
     def get_shader_program(vert_path : [int|str], frag_path : [int|str], src_dir):
+        print("Creating shader program...")
+
         if type(vert_path) == str:
             vert_shader = MeshShader.compile_shader(vert_path, GL_VERTEX_SHADER, shader_folder=src_dir)
         else:
@@ -98,46 +102,44 @@ class MeshShader:
 
         progID = glCreateProgram()
 
-        assert progID != 0, print("Couldn't create program")
+        assert progID != 0, print("Failed to create program")
 
         glAttachShader(progID, vert_shader)
         glAttachShader(progID, frag_shader)
         glLinkProgram(progID)
 
-        assert glGetProgramiv(progID, GL_LINK_STATUS) == 1, print("Couldn't link program")
+        assert glGetProgramiv(progID, GL_LINK_STATUS) == 1, print("Failed to link")
 
         return progID, vert_shader, frag_shader
 
     @staticmethod
     def compile_shader(shader_file: str, shader_type: int, use_fallback = True, shader_folder: str = ""):
-        if not shader_type in [GL_VERTEX_SHADER, GL_FRAGMENT_SHADER]:
-            return -1
-
-        lookup = MeshShader.compiled_vert_shaders if shader_type == GL_VERTEX_SHADER else MeshShader.compile_frag_shaders
-
-        if shader_file in lookup:
-            print("\tShader already compiled")
-            return lookup[shader_file]
-
-        shader_id = glCreateShader(shader_type)
-
-        if shader_id == 0:
-            print("Couldn't create shader")
-            return -1
+        assert shader_type in [GL_VERTEX_SHADER, GL_FRAGMENT_SHADER], print("Invalid shader type")
 
         shader_path = shader_file
         if shader_folder != "":
             shader_path = path.join(shader_folder, shader_file)
 
+        print(f"\tCompiling shader file {shader_path}...", end="")
+
+        lookup : dict = MeshShader.compiled_vert_shaders if shader_type == GL_VERTEX_SHADER else MeshShader.compiled_frag_shaders
+
+        if shader_path in lookup:
+            print("done (already compiled)")
+            return lookup[shader_path]
+
+        shader_id = glCreateShader(shader_type)
+
+        assert shader_id != 0, print("Couldn't create shader")
+
         try:
             with open(shader_path) as shader_file:
                 glShaderSource(shader_id, shader_file.read())
         except FileNotFoundError:
-            print(f"Couldn't find shader file: '{shader_path}'")
-
             assert use_fallback, print("Fallback shader disabled - compilation failed")
 
-            print("Using fallback shader")
+            print(f"Unable to find shader source - using fallback shader")
+
             fallback_path = ""
             if shader_type == GL_VERTEX_SHADER:
                 fallback_path = path.join(DEFAULT_SHADER_DIR, DEFAULT_VERTEX)
@@ -150,7 +152,9 @@ class MeshShader:
         result = glGetShaderiv(shader_id, GL_COMPILE_STATUS)
         assert result == 1, print(f"Couldn't compile vertex shader\nShader compilation Log:\n{str(glGetShaderInfoLog(shader_id))}")
 
-        lookup[shader_file] = shader_id
+        lookup[shader_path] = shader_id
+
+        print("done")
 
         return shader_id
 
@@ -254,15 +258,16 @@ class MeshShader:
         value = [int(v) for v in value]
         self.set_uniform_int(value, uniform_name)
 
-    def set_uniform_sampler2D(self, texture_id: int, uniform_name, texture_slot = 0):
-        if texture_id <= 0:
-            return
-
+    def set_uniform_sampler2D(self, uniform_name, texture_slot = 0):
         loc = self.get_uniform_loc(uniform_name)
+        glUniform1i(loc, texture_slot)
+
+    def activate_texture(self, texture_id = -1, texture_slot = 0):
+        if texture_id <= 0:
+            texture_id = self.diff_tex_id
 
         glActiveTexture(GL_TEXTURE0 + texture_slot)
         glBindTexture(GL_TEXTURE_2D, texture_id)
-        glUniform1i(loc, texture_slot)
 
     def set_camera_uniforms(self, camera: 'Camera'):
         self.set_uniform_matrix(camera.projection_matrix, "u_projection_matrix")
@@ -304,7 +309,7 @@ class MeshShader:
 
     def set_diffuse_texture(self, diff_tex_id):
         self.set_uniform_bool((diff_tex_id > 0), "u_material.has_texture")
-        self.set_uniform_sampler2D(diff_tex_id, "u_material.diffuse_tex")
+        self.set_uniform_sampler2D("u_material.diffuse_tex", 0)
 
     def set_material_specular(self, color):
         self.set_uniform_color(color, "u_material.specular")

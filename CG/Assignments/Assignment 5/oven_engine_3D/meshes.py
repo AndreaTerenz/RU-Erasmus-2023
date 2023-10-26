@@ -1,3 +1,4 @@
+import os.path
 from abc import abstractmethod, ABC
 from itertools import chain
 from OpenGL.GL import *
@@ -27,7 +28,7 @@ class Mesh(ABC):
         self.verts_per_face = verts_per_face
         self.face_count = face_count
 
-    def draw(self, app_context: 'BaseApp3D', shader,
+    def draw(self, app_context: 'BaseApp3D', shader: 'MeshShader',
                   offset: Vector3D = Vector3D.ZERO, scale: Vector3D = Vector3D.ONE, rotation: Vector3D = Vector3D.ZERO,
                   model_matrix=None):
         if model_matrix is None:
@@ -43,6 +44,7 @@ class Mesh(ABC):
         shader.set_uniform_int(len(lights), "u_light_count")
         shader.set_light_uniforms(lights)
         shader.set_camera_uniforms(camera)
+        shader.activate_texture()
 
         time = np.float32(app_context.ticks / 1000.)
         shader.set_time(time)
@@ -128,7 +130,13 @@ class PlaneMesh(Mesh):
                          4, 1)
 
 class OBJMesh(Mesh):
-    def __init__(self, file_name):
+    __create_key = object()
+
+    loaded = {}
+
+    def __init__(self, file_name, key):
+        assert (key == OBJMesh.__create_key), "OBJMesh objects must be created using OBJMesh.load"
+
         scene = pwf.Wavefront(file_name, collect_faces=True)
         # ASSUME 1 MESH
         face_count = len(scene.mesh_list[0].faces)
@@ -143,11 +151,25 @@ class OBJMesh(Mesh):
         normals = np.array([v[1] for v in verts])
         uvs = np.array([v[0] for v in verts])
 
-        print(face_count)
-        print(material.vertex_format)
-
         super().__init__(positions, normals, uvs,
                          3, face_count)
+
+        print("done")
+
+    @staticmethod
+    def load(file_name):
+        print(f"Loading mesh from {file_name}...", end="")
+
+        file_name = os.path.abspath(file_name)
+
+        if file_name in OBJMesh.loaded.keys():
+            print("done (mesh already loaded)")
+            return OBJMesh.loaded[file_name]
+
+        mesh = OBJMesh(file_name, OBJMesh.__create_key)
+        OBJMesh.loaded[file_name] = mesh
+
+        return mesh
 
 if __name__ == '__main__':
     scene = pwf.Wavefront('../res/models/cylinder.obj', collect_faces=True)
