@@ -1,3 +1,4 @@
+import math
 import os.path
 from abc import abstractmethod, ABC
 from itertools import chain
@@ -34,17 +35,15 @@ class Mesh(ABC):
         if model_matrix is None:
             model_matrix = ModelMatrix.from_transformations(offset, rotation, scale)
 
-        camera = app_context.camera
-        lights = app_context.lights
-
         shader.use()
 
         shader.set_mesh_attributes(self.vbo)
         shader.set_model_matrix(model_matrix)
-        shader.set_uniform_int(len(lights), "u_light_count")
-        shader.set_light_uniforms(lights)
-        shader.set_camera_uniforms(camera)
         shader.activate_texture()
+
+        shader.set_uniform_int(app_context.light_count, "u_light_count")
+        shader.set_light_uniforms(app_context.lights)
+        shader.set_camera_uniforms(app_context.camera)
 
         time = np.float32(app_context.ticks / 1000.)
         shader.set_time(time)
@@ -128,6 +127,63 @@ class PlaneMesh(Mesh):
     def __init__(self):
         super().__init__(PlaneMesh.PLANE_POSITION_ARRAY, PlaneMesh.PLANE_NORMAL_ARRAY, PlaneMesh.PLANE_UV_ARRAY,
                          4, 1)
+
+class SphereMesh(Mesh):
+    def __init__(self, n_slices, n_stacks = 0):
+        pos_tmp = []
+        nor_tmp = []
+        uv_tmp = []
+
+        if n_stacks == 0:
+            n_stacks = n_slices
+        else:
+            n_stacks *= 2
+
+        slice_step = math.tau / n_slices
+        stack_step = math.tau / n_stacks
+
+        for i in range(n_stacks+1):
+            stack_angle = (math.tau / 4.) - i * stack_step
+            xy = math.cos(stack_angle)
+            z = math.sin(stack_angle)
+
+            for j in range(n_slices + 1):
+                slice_angle = j * slice_step
+
+                x = xy * math.cos(slice_angle)
+                y = xy * math.sin(slice_angle)
+
+                pos_tmp.append([x, z, y])
+                nor_tmp.append([x, z, y])
+
+                # LMAO THIS WORKS FOR REAL????? LOOOOOOOL
+                s = - float(j) / n_slices
+                t = 2. * float(i) / n_stacks
+
+                uv_tmp.append([s, t])
+
+        indices = []
+        for i in range(n_stacks):
+            k1 = i * (n_slices + 1)
+            k2 = k1 + n_slices + 1
+
+            for j in range(n_slices):
+                if i != 0:
+                    indices += [k1+1, k2, k1]
+
+                if i != (n_slices - 1):
+                    indices += [k2+1, k2, k1+1]
+
+                k1 += 1
+                k2 += 1
+
+        positions = [pos_tmp[i] for i in indices]
+        normals = [nor_tmp[i] for i in indices]
+        uvs = [uv_tmp[i] for i in indices]
+
+        face_count = n_stacks * n_slices * 2
+
+        super().__init__(positions, normals, uvs, 3, face_count)
 
 class OBJMesh(Mesh):
     __create_key = object()

@@ -76,7 +76,7 @@ vec4 compute_shaded_color(vec4 s_vec, vec4 v_vec, float d, Light light, vec4 bas
 vec4 funky_animation(float time, vec4 input_color)
 {
 	vec3 tmp = rgb2hsv(input_color.rgb);
-	tmp.r += sin(time * 2.);
+	tmp.r += (time * 2.);
 	tmp = hsv2rgb(tmp);
 
 	return vec4(tmp, 1.);

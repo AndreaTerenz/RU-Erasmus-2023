@@ -16,6 +16,7 @@ class BaseApp3D(ABC):
                  fullscreen  = True,
                  ambient_color = None,
                  update_camera = True,
+                 face_culling = True,
                  ):
 
         pg.init()
@@ -39,6 +40,7 @@ class BaseApp3D(ABC):
         self.update_camera = update_camera
         self.light = None
         self.lights = []
+        self.face_culling = face_culling
 
         self.clock = pg.time.Clock()
         self.ticks = 0
@@ -77,6 +79,7 @@ class BaseApp3D(ABC):
     def _display(self):
         glEnable(GL_DEPTH_TEST)
         glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST)
+
         glEnable(GL_CULL_FACE)
         glCullFace(GL_FRONT)
 
@@ -152,3 +155,7 @@ class BaseApp3D(ABC):
 
     def get_mouse_pos(self):
         return Vector2D(pg.mouse.get_pos()) / self.win_size - Vector2D(0.5, 0.5)
+
+    @property
+    def light_count(self):
+        return len(self.lights)

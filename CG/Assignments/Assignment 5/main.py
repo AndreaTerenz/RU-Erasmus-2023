@@ -5,7 +5,7 @@ from pygame import Color
 from game_entities import Player
 from oven_engine_3D.base_app import BaseApp3D
 from oven_engine_3D.entities import Plane, Cube, MeshEntity
-from oven_engine_3D.meshes import OBJMesh
+from oven_engine_3D.meshes import OBJMesh, SphereMesh
 from oven_engine_3D.shaders import MeshShader, DEFAULT_FRAG
 from oven_engine_3D.utils.geometry import Vector3D
 
@@ -35,10 +35,16 @@ class Assignment5(BaseApp3D):
         mat5 = mat2.variation(diffuse_texture="", fragID="funky.frag")
 
         self.objects.append(MeshEntity(mesh="res/models/cube.obj", parent_app=self, shader=mat1))
-        self.objects.append(MeshEntity(mesh="res/models/teapot.obj", parent_app=self, origin=Vector3D.RIGHT*3. + Vector3D.UP * 2., shader=mat2))
-        self.objects.append(MeshEntity(mesh="res/models/cube.obj", parent_app=self, origin=Vector3D.LEFT*3. - Vector3D.UP * 2., shader=mat3))
+        self.objects.append(MeshEntity(mesh="res/models/teapot.obj", parent_app=self, shader=mat2))
+        self.objects.append(MeshEntity(mesh="res/models/cube.obj", parent_app=self, origin=Vector3D.LEFT * 2., shader=mat3))
         self.objects.append(MeshEntity(mesh="res/models/bunny.obj", parent_app=self, shader=mat4))
         self.objects.append(MeshEntity(mesh="res/models/monke.obj", parent_app=self, shader=mat5))
+
+        sphere = SphereMesh(32)
+        map_mat = MeshShader(diffuse_texture="res/textures/map.jpg")
+        moon_mat = map_mat.variation(diffuse_texture="res/textures/map_moon.jpg")
+        self.objects.append(MeshEntity(mesh=sphere, parent_app=self, origin=Vector3D.BACKWARD * 10., shader=map_mat, scale=2.))
+        self.objects.append(MeshEntity(mesh=sphere, parent_app=self, origin=Vector3D.BACKWARD * 10. + Vector3D.RIGHT * 5., shader=moon_mat, scale = .5))
 
     def update(self, delta):
         pass

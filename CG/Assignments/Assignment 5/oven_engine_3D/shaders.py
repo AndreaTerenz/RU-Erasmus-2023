@@ -158,6 +158,10 @@ class MeshShader:
 
         return shader_id
 
+    @property
+    def info_log(self):
+        return glGetProgramInfoLog(self.renderingProgramID)
+
     def enable_attrib_array(self, attrib_name):
         attrib_loc = self.get_attrib_loc(attrib_name)
 
@@ -174,7 +178,7 @@ class MeshShader:
         try:
             glUseProgram(self.renderingProgramID)
         except OpenGL.error.GLError:
-            print(glGetProgramInfoLog(self.renderingProgramID))
+            print(f"Failed to use shader - {self.info_log}")
             raise
 
     def get_uniform_loc(self, uniform_name):
