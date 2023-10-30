@@ -3,14 +3,16 @@ from pygame import Color
 from oven_engine_3D.entities import Entity
 from oven_engine_3D.utils.geometry import Vector3D
 
+BASE_INTENSITY = 2.
 
 class Light(Entity):
-    def __init__(self, parent_app, position, color, radius=0., ambient_color=Color("black")):
+    def __init__(self, parent_app, position, color, radius=0., ambient_color=Color("black"), intensity=1.):
         super().__init__(parent_app, origin=position)
 
         self.color = color
         self.radius = radius
         self.ambient = ambient_color
+        self.intensity = intensity * BASE_INTENSITY
 
     def _update(self, delta):
         pass

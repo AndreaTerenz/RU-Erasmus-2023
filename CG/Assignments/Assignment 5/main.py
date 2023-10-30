@@ -16,7 +16,10 @@ class Assignment5(BaseApp3D):
     def __init__(self):
         super().__init__(fullscreen=True, ambient_color=Color("white"),
                          clear_color=Color(30, 30, 30), update_camera=False,
-                         environment=Environment(fog_mode=Environment.FogMode.EXP2, fog_density=.05))
+                         environment=Environment(
+                             fog_mode=Environment.FogMode.DISABLED, fog_density=.05,
+                             tonemap=Environment.Tonemapping.UNCHARTED
+                         ))
 
         ratio = self.win_size.aspect_ratio
         self.player = Player(self, rot_y=math.tau/2., camera_params={"ratio": ratio, "fov": math.tau/6., "near": .1, "far": 80.})

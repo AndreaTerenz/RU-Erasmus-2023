@@ -1,3 +1,5 @@
+import os
+
 from OpenGL.GL import *
 from OpenGL.constant import IntConstant
 from oven_engine_3D.utils.geometry import Vector2D
@@ -16,6 +18,10 @@ class TexturesManager:
         if path in TexturesManager.textures.keys():
             print("done (texture already loaded)")
             return TexturesManager.textures[path]
+
+        if not os.path.exists(path):
+            print(f"Failed ('{path}' does not exist)")
+            path = "res/textures/DB_missing_texture.png"
 
         surf = img.load(path)
         tex_str = img.tostring(surf, "RGBA", 1)

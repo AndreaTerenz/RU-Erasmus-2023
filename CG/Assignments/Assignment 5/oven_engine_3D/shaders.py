@@ -284,8 +284,22 @@ class MeshShader:
         self.set_uniform_float(env.start_fog, "u_env.start_fog")
         self.set_uniform_float(env.end_fog, "u_env.end_fog")
         self.set_uniform_float(env.fog_density, "u_env.fog_density")
-        self.set_uniform_bool(env.fog_enabled, "u_env.fog_enabled")
         self.set_uniform_int(env.fog_mode.value, "u_env.fog_mode")
+        self.set_uniform_int(env.tonemap.value, "u_env.tonemap_mode")
+
+    def set_light_uniforms(self, lights: ["Light"|Collection]):
+        if not isinstance(lights, Collection):
+            lights = [lights]
+
+        self.set_uniform_int(len(lights), "u_light_count")
+
+        for idx, l in enumerate(lights):
+            self.set_uniform_vec3D(l.origin, f"u_lights[{idx}].position")
+            self.set_uniform_float(l.radius, f"u_lights[{idx}].radius")
+            self.set_uniform_float(l.intensity, f"u_lights[{idx}].intensity")
+            self.set_uniform_color(l.color, f"u_lights[{idx}].diffuse")
+            self.set_uniform_color(l.color, f"u_lights[{idx}].specular")
+            self.set_uniform_color(l.ambient, f"u_lights[{idx}].ambient")
 
     def set_model_matrix(self, matrix):
         self.set_uniform_matrix(matrix, "u_model_matrix")
@@ -305,19 +319,6 @@ class MeshShader:
             offset_size += attrib_sizes[idx] * values_per_attrib[idx]
 
         glBindBuffer(GL_ARRAY_BUFFER, 0)
-
-    def set_light_uniforms(self, lights: ["Light"|Collection]):
-        if not isinstance(lights, Collection):
-            lights = [lights]
-
-        self.set_uniform_int(len(lights), "u_light_count")
-
-        for idx, l in enumerate(lights):
-            self.set_uniform_vec3D(l.origin, f"u_lights[{idx}].position")
-            self.set_uniform_float(l.radius, f"u_lights[{idx}].radius")
-            self.set_uniform_color(l.color, f"u_lights[{idx}].diffuse")
-            self.set_uniform_color(l.color, f"u_lights[{idx}].specular")
-            self.set_uniform_color(l.ambient, f"u_lights[{idx}].ambient")
 
     def set_diffuse_texture(self, diff_tex_id):
         self.set_uniform_bool((diff_tex_id > 0), "u_material.has_texture")

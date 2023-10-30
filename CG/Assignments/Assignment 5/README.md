@@ -4,9 +4,10 @@ Requires Python 3.11 or higher
 
 ### To Do
 
-- [ ] ACES Tonemapping
-  - [ ] select multiple tonemapping operators
-- [ ] Fog
+- [x] ~~ACES Tonemapping~~
+  - [ ] select [multiple tonemapping operators](https://64.github.io/tonemapping)
+- [x] ~~Fog~~
+- [ ] [Skybox](https://learnopengl.com/Advanced-OpenGL/Cubemaps)
 - [ ] Better light attenuation
   - [ ] use the actual 1/(1+a*d) formula
   - [ ] add attenuation parameter to Light class
