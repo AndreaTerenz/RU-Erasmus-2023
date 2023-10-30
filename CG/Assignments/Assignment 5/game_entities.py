@@ -9,12 +9,12 @@ from oven_engine_3D.utils.geometry import Vector3D, Vector2D
 
 class PlayerLight(Light):
     def __init__(self, app, player, color):
-        super().__init__(parent_app=app, position=player.position, color=color, radius=32., intensity=5.)
+        super().__init__(parent_app=app, position=player.origin, color=color, radius=32., intensity=.5)
 
         self.player = player
 
     def update(self, delta):
-        self.translate_to(self.player.camera.origin)
+        self.origin = self.player.origin
 
 class Player(Entity):
 
@@ -43,7 +43,7 @@ class Player(Entity):
 
     @property
     def position(self):
-        return self.camera.view_matrix.eye
+        return self.origin #self.camera.view_matrix.eye
 
     def _update(self, delta):
         self.move(delta)
@@ -72,6 +72,7 @@ class Player(Entity):
 
             # move player
             self.camera.translate(slide_offset)
+            self.translate(slide_offset)
 
     def handle_event(self, ev):
         self.camera.handle_event(ev)

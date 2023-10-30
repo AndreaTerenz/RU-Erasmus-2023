@@ -1,29 +1,20 @@
 import math
 import os.path
-from abc import abstractmethod, ABC
+from abc import ABC
+from enum import Enum
 from itertools import chain
-from OpenGL.GL import *
+
 import numpy as np
+import pywavefront as pwf
+from OpenGL.GL import *
 
-from oven_engine_3D.shaders import MeshShader
 from oven_engine_3D.utils.geometry import Vector3D
-
 from oven_engine_3D.utils.matrices import ModelMatrix
 
-import pywavefront as pwf
 
 class Mesh(ABC):
     def __init__(self, positions, normals, uvs, verts_per_face, face_count):
-        if not(normals is None and uvs is None):
-            tmp = [(*p, *n, *u) for p, n, u in zip(positions, normals, uvs)]
-            tmp = list(chain.from_iterable(tmp))
-        else:
-            tmp = positions
-
-        self.__vbo = glGenBuffers(1)
-        glBindBuffer(GL_ARRAY_BUFFER, self.__vbo)
-        glBufferData(GL_ARRAY_BUFFER, np.array(tmp, dtype="float32"), GL_STATIC_DRAW)
-        glBindBuffer(GL_ARRAY_BUFFER, 0)
+        self.__vbo = Mesh.vbo_from_data(positions, normals, uvs)
 
         self.vertex_positions = positions
         self.vertex_normals = normals
@@ -31,7 +22,22 @@ class Mesh(ABC):
         self.verts_per_face = verts_per_face
         self.face_count = face_count
 
-    def draw(self, app: 'BaseApp3D', shader: MeshShader,
+    @staticmethod
+    def vbo_from_data(pos, nor, uv):
+        if not(nor is None and uv is None):
+            tmp = [(*p, *n, *u) for p, n, u in zip(pos, nor, uv)]
+            tmp = list(chain.from_iterable(tmp))
+        else:
+            tmp = pos
+
+        vbo_id = glGenBuffers(1)
+        glBindBuffer(GL_ARRAY_BUFFER, vbo_id)
+        glBufferData(GL_ARRAY_BUFFER, np.array(tmp, dtype="float32"), GL_STATIC_DRAW)
+        glBindBuffer(GL_ARRAY_BUFFER, 0)
+
+        return vbo_id
+
+    def draw(self, app: 'BaseApp3D', shader: "MeshShader",
              offset: Vector3D = Vector3D.ZERO, scale: Vector3D = Vector3D.ONE, rotation: Vector3D = Vector3D.ZERO,
              model_matrix=None):
         if model_matrix is None:
@@ -41,7 +47,7 @@ class Mesh(ABC):
 
         shader.set_mesh_attributes(self.vbo)
         shader.set_model_matrix(model_matrix)
-        shader.activate_texture()
+        shader.activate_diffuse_text()
 
         shader.set_light_uniforms(app.lights)
         shader.set_camera_uniforms(app.camera)
@@ -108,10 +114,50 @@ class CubeMesh(Mesh):
                               [1., 0.], ] * 6)
 
     # Coordinates for a cross-shaped UV map
-    #CUBE_UV_ARRAY2 =
+    CUBE_UV_ARRAY2 = np.array([[3./4., 2./3.],
+                                 [3./4., 1./3.],
+                                 [1., 1./3.],
+                                 [1., 2/3.],
 
-    def __init__(self):
-        super().__init__(CubeMesh.CUBE_POSITION_ARRAY, CubeMesh.CUBE_NORMAL_ARRAY, CubeMesh.CUBE_UV_ARRAY,
+                                 [1./4., 2./3.],
+                                 [1./4., 1./3.],
+                                 [1./2., 1./3.],
+                                 [1./2., 2./3.],
+
+                                 [1./4., 1.],
+                                 [1./4., 2./3.],
+                                 [1./2., 2./3.],
+                                 [1./2., 1.],
+
+                                 [1./4., 1./3.],
+                                 [1./4., 0.],
+                                 [1./2., 0.],
+                                 [1./2., 1./3.],
+
+                                 [0., 2./3.],
+                                 [0., 1./3.],
+                                 [1./4., 1./3.],
+                                 [1./4., 2./3.],
+
+                                 [1./2., 2./3.],
+                                 [1./2., 1./3.],
+                                 [3./4., 1./3.],
+                                 [3./4., 2./3.],])
+
+    class UVMode(Enum):
+        SAME = 0
+        CROSS = 1
+
+    def __init__(self, uv_mode = UVMode.SAME):
+        uvs = CubeMesh.CUBE_UV_ARRAY if uv_mode == CubeMesh.UVMode.SAME else CubeMesh.CUBE_UV_ARRAY2
+
+        pos = CubeMesh.CUBE_POSITION_ARRAY
+        nor = CubeMesh.CUBE_NORMAL_ARRAY
+
+        if uv_mode == CubeMesh.UVMode.CROSS:
+            pos *= -1
+
+        super().__init__(pos, nor, uvs,
                          4, 6)
 
 
@@ -127,8 +173,7 @@ class PlaneMesh(Mesh):
                                [1., 0.]])
 
     def __init__(self):
-        super().__init__(PlaneMesh.PLANE_POSITION_ARRAY, PlaneMesh.PLANE_NORMAL_ARRAY, PlaneMesh.PLANE_UV_ARRAY,
-                         4, 1)
+        super().__init__(PlaneMesh.PLANE_POSITION_ARRAY, PlaneMesh.PLANE_NORMAL_ARRAY, PlaneMesh.PLANE_UV_ARRAY, 4, 1)
 
 class SphereMesh(Mesh):
     def __init__(self, n_slices, n_stacks = 0):
@@ -209,8 +254,7 @@ class OBJMesh(Mesh):
         normals = np.array([v[1] for v in verts])
         uvs = np.array([v[0] for v in verts])
 
-        super().__init__(positions, normals, uvs,
-                         3, face_count)
+        super().__init__(positions, normals, uvs, 3, face_count)
 
         print("done")
 

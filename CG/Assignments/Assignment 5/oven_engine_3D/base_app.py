@@ -1,13 +1,11 @@
-from abc import ABC, abstractmethod
+from pygame.locals import *
 
 from pygame.locals import *
 
-from oven_engine_3D.environment import Environment
-from oven_engine_3D.shaders import *
 from oven_engine_3D.camera import *
+from oven_engine_3D.shaders import *
 from oven_engine_3D.utils.geometry import Vector2D
 
-from OpenGL.GL import *
 
 class BaseApp3D(ABC):
     def __init__(self,
@@ -86,11 +84,8 @@ class BaseApp3D(ABC):
 
     def _display(self):
         glEnable(GL_DEPTH_TEST)
-        glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST)
-
         glEnable(GL_CULL_FACE)
         glCullFace(GL_FRONT)
-
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
         self.display()
@@ -106,6 +101,9 @@ class BaseApp3D(ABC):
         pass
 
     def run(self):
+
+        print("######################### STARTING\n\n")
+
         exiting = False
         while not exiting:
             exiting = self._handle_events()

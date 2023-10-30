@@ -5,23 +5,22 @@ Requires Python 3.11 or higher
 ### To Do
 
 - [x] ~~ACES Tonemapping~~
-  - [ ] select [multiple tonemapping operators](https://64.github.io/tonemapping)
+  - [x] ~~select [multiple tonemapping operators](https://64.github.io/tonemapping)~~
 - [x] ~~Fog~~
+- [ ] Screenshot hotkey
 - [ ] [Skybox](https://learnopengl.com/Advanced-OpenGL/Cubemaps)
-- [ ] Better light attenuation
-  - [ ] use the actual 1/(1+a*d) formula
-  - [ ] add attenuation parameter to Light class
+  - [x] ~~Split shader back into "BaseShader" and "MeshShader"~~ (to make the SkyShader a separate subclass)
 - [ ] Use buffer indices instead of having to repeat vertex data for position, normal, uv, etc... 
 - [ ] Code to generate additional meshes
   - [x] ~~Sphere~~
     - [ ] Icosphere
     - [ ] Cubesphere
   - [ ] Torus
-  - [ ] Cylinder/Prysm
-  - [ ] Cone
-    - [ ] Truncated cone
+  - [ ] Cylinder/Prysm (also counts for cone if you allow different radius for top & bottom)
   - [ ] Subdivided plane
-- [ ] Light types (even just point vs directional)
+- [ ] Light types
+  - [ ] Directional
+  - [ ] Spotlight (maybe...)
 - [ ] Mesh Loading
   - [x] ~~Mesh are loaded~~
   - [ ] Parse vertex format and act accordingly

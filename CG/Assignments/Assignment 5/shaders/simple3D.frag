@@ -14,6 +14,7 @@ struct Light
 	vec4 diffuse,
 		 specular,
 		 ambient;
+	float attenuation[3];
 	vec4 position;
 	float intensity;
 	float radius;
@@ -71,9 +72,11 @@ vec4 color_from_light(vec4 view_vec, Light light, vec4 base_diffuse)
 	float phong = max(0.0, dot(h, v_norm) / (length(h) * length(v_norm)));
 	vec4 specular = light.specular * light.intensity * u_material.specular_color * pow(phong, u_material.shininess);
 
-	float dist_factor = light.radius <= 0. ? 1. : 1. - d / light.radius;
+	float dist_factor = 1.;
+	if (light.radius > 0.)
+		dist_factor = clamp(1. - pow(d / light.radius, 2.), 0., 1.);
 
-	return (ambient + diffuse + specular) * dist_factor;
+	return (ambient + diffuse + specular) * (dist_factor * dist_factor);
 }
 
 float linear_fog_factor(float dist)
