@@ -4,6 +4,8 @@ from abc import abstractmethod, ABC
 from itertools import chain
 from OpenGL.GL import *
 import numpy as np
+
+from oven_engine_3D.shaders import MeshShader
 from oven_engine_3D.utils.geometry import Vector3D
 
 from oven_engine_3D.utils.matrices import ModelMatrix
@@ -29,9 +31,9 @@ class Mesh(ABC):
         self.verts_per_face = verts_per_face
         self.face_count = face_count
 
-    def draw(self, app_context: 'BaseApp3D', shader: 'MeshShader',
-                  offset: Vector3D = Vector3D.ZERO, scale: Vector3D = Vector3D.ONE, rotation: Vector3D = Vector3D.ZERO,
-                  model_matrix=None):
+    def draw(self, app: 'BaseApp3D', shader: MeshShader,
+             offset: Vector3D = Vector3D.ZERO, scale: Vector3D = Vector3D.ONE, rotation: Vector3D = Vector3D.ZERO,
+             model_matrix=None):
         if model_matrix is None:
             model_matrix = ModelMatrix.from_transformations(offset, rotation, scale)
 
@@ -41,11 +43,10 @@ class Mesh(ABC):
         shader.set_model_matrix(model_matrix)
         shader.activate_texture()
 
-        shader.set_uniform_int(app_context.light_count, "u_light_count")
-        shader.set_light_uniforms(app_context.lights)
-        shader.set_camera_uniforms(app_context.camera)
+        shader.set_light_uniforms(app.lights)
+        shader.set_camera_uniforms(app.camera)
 
-        time = np.float32(app_context.ticks / 1000.)
+        time = np.float32(app.ticks / 1000.)
         shader.set_time(time)
 
         glBindBuffer(GL_ARRAY_BUFFER, self.vbo)

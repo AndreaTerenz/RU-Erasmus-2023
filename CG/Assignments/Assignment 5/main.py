@@ -5,6 +5,7 @@ from pygame import Color
 from game_entities import Player
 from oven_engine_3D.base_app import BaseApp3D
 from oven_engine_3D.entities import Plane, Cube, MeshEntity
+from oven_engine_3D.light import Light
 from oven_engine_3D.meshes import OBJMesh, SphereMesh
 from oven_engine_3D.shaders import MeshShader, DEFAULT_FRAG
 from oven_engine_3D.utils.geometry import Vector3D
@@ -23,21 +24,20 @@ class Assignment5(BaseApp3D):
         self.player = Player(self, rot_y=math.tau/2., camera_params={"ratio": ratio, "fov": math.tau/6., "near": .1, "far": 80.})
 
         self.camera = self.player.camera
-        self.lights.append(self.player.light)
+        self.lights.append(Light(self, Vector3D.UP * 2., Color("white"), radius=20.))
         self.objects.append(self.player)
 
         self.objects.append(Plane(self, origin=Vector3D.DOWN * 5., scale=30., color=Color("white")))
 
-        mat1 = MeshShader(diffuse_color=Color("cyan"), diffuse_texture="res/textures/img1.png", unshaded=True)
-        mat2 = mat1.variation(diffuse_color=Color("red"), unshaded=False, diffuse_texture="")
-        mat3 = mat1.variation(diffuse_texture="res/textures/cubemap2.png", diffuse_color=Color("yellow"))
-        mat4 = mat2.variation(diffuse_texture="")
-        mat5 = mat2.variation(diffuse_texture="", fragID="funky.frag")
+        mat1 = MeshShader(diffuse_texture="res/textures/img1.png", params = {"diffuse_color" : Color("cyan"), "unshaded" : True})
+        mat2 = mat1.variation(diffuse_texture="", params = {"diffuse_color" : Color("red"), "unshaded" : False})
+        mat3 = mat1.variation(diffuse_texture="res/textures/cubemap2.png", params = {"diffuse_color": Color("yellow")})
+        mat5 = mat1.variation(diffuse_texture="", frag_shader_path="shaders/funky.frag", params = {"unshaded": False})
 
         self.objects.append(MeshEntity(mesh="res/models/cube.obj", parent_app=self, shader=mat1))
         self.objects.append(MeshEntity(mesh="res/models/teapot.obj", parent_app=self, shader=mat2))
         self.objects.append(MeshEntity(mesh="res/models/cube.obj", parent_app=self, origin=Vector3D.LEFT * 2., shader=mat3))
-        self.objects.append(MeshEntity(mesh="res/models/bunny.obj", parent_app=self, shader=mat4))
+        self.objects.append(MeshEntity(mesh="res/models/bunny.obj", parent_app=self, shader=mat2))
         self.objects.append(MeshEntity(mesh="res/models/monke.obj", parent_app=self, shader=mat5))
 
         sphere = SphereMesh(32)

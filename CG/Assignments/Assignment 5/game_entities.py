@@ -14,7 +14,7 @@ class PlayerLight(Light):
         self.player = player
 
     def update(self, delta):
-        self.translate_to(self.player.camera.origin)
+        pass #self.translate_to(self.player.camera.origin)
 
 class Player(Entity):
 

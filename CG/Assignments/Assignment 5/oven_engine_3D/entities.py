@@ -71,7 +71,7 @@ class MeshEntity(Entity):
         super().__init__(parent_app, origin, rotation, scale)
 
         if shader is None:
-            shader = MeshShader(diffuse_color=color)
+            shader = MeshShader(params={"diffuse_color" : color})
 
         self.shader = shader
 

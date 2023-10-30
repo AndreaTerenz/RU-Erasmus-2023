@@ -1,3 +1,4 @@
+import os.path
 import os.path as path
 from typing import Collection
 
@@ -12,43 +13,38 @@ from oven_engine_3D.utils.textures import TexturesManager
 from oven_engine_3D.utils.geometry import Vector3D
 
 DEFAULT_SHADER_DIR = "shaders"
-DEFAULT_VERTEX = "simple3D.vert"
-DEFAULT_FRAG = "simple3D.frag"
+DEFAULT_VERTEX = os.path.join(DEFAULT_SHADER_DIR, "simple3D.vert")
+DEFAULT_FRAG =  os.path.join(DEFAULT_SHADER_DIR, "simple3D.frag")
+DEFAULT_PARAMS = {
+                "diffuse_color" : Color("white"),
+                "specular_color" : (.2, .2, .2),
+                "ambient_color" : (.1, .1, .1),
+                "shininess" : 5.,
+                "unshaded" : False,
+                "receive_ambient" : True
+            }
 
-
-def uniform_updater(func):
-    def foo(self, V, N, *args, **kwargs):
-        if N in self.uniform_values and self.uniform_values[N] == V:
-            return
-
-        self.uniform_values[N] = V
-        func(self, V, N, *args, **kwargs)
-
-    return foo
+def add_missing(dict1, dict2):
+    dict1.update({key:value for key,value in dict2.items() if not key in dict1})
 
 class MeshShader:
     compiled_vert_shaders = {}
     compiled_frag_shaders = {}
 
     def __init__(self,
-                 vert_shader_path = DEFAULT_VERTEX, frag_shader_path = DEFAULT_FRAG, shader_folder : str = DEFAULT_SHADER_DIR,
-                 diffuse_color=Color("white"), specular_color=(.2, .2, .2), ambient_color=(.1, .1, .1),
-                 shininess=5., unshaded=False, receive_ambient=True, diffuse_texture : [int|str] = "", vertID=-1, fragID=-1):
+                 vert_shader_path = DEFAULT_VERTEX, frag_shader_path = DEFAULT_FRAG,
+                 diffuse_texture : [int|str] = "", params=None):
 
-        v = vertID if vertID != -1 else vert_shader_path
-        f = fragID if fragID != -1 else frag_shader_path
+        self.vert_shader_path = vert_shader_path
+        self.frag_shader_path = frag_shader_path
 
-        self.renderingProgramID, self.vert_id, self.frag_id = MeshShader.get_shader_program(v, f, shader_folder)
+        self.renderingProgramID = MeshShader.get_shader_program(self.vert_shader_path, self.frag_shader_path)
 
         self.uniform_locations = {}
-        self.uniform_values = {}
 
         self.positionLoc = self.enable_attrib_array("a_position")
-        self.normalLoc = self.enable_attrib_array("a_normal")
-        self.uvLoc = self.enable_attrib_array("a_uv")
-
-        self.unshaded = unshaded
-        self.receive_ambient = receive_ambient
+        self.normalLoc   = self.enable_attrib_array("a_normal")
+        self.uvLoc       = self.enable_attrib_array("a_uv")
 
         self.diff_tex_id = -1
         if type(diffuse_texture) is int and diffuse_texture >= 0:
@@ -56,14 +52,15 @@ class MeshShader:
         elif type(diffuse_texture) is str and diffuse_texture != "":
             self.diff_tex_id = TexturesManager.load_texture(diffuse_texture, filtering=GL_LINEAR)
 
+        if params is None:
+            params = DEFAULT_PARAMS
+
+        self.params = params
+        add_missing(self.params, DEFAULT_PARAMS)
+
         self.use()
-        self.set_material_diffuse(diffuse_color)
-        self.set_material_specular(specular_color)
-        self.set_material_ambient(ambient_color)
         self.set_diffuse_texture(self.diff_tex_id)
-        self.set_unshaded(unshaded)
-        self.set_receive_ambient(receive_ambient)
-        self.set_shininess(shininess)
+        self.set_material_uniforms(self.params)
 
         print()
 
@@ -74,31 +71,22 @@ class MeshShader:
         print("Shader variation:\n\t", end="")
         print(*kwargs.items(), sep="\n\t")
 
+        p = kwargs.get("params", {})
+        add_missing(p, self.params)
+
         return MeshShader(
-            diffuse_color=kwargs.get("diffuse_color", self.get_uniform_color("u_material.diffuse")),
-            specular_color=kwargs.get("specular_color", self.get_uniform_color("u_material.specular")),
-            ambient_color=kwargs.get("ambient_color", self.get_uniform_color("u_material.ambient")),
-            shininess=kwargs.get("shininess", self.get_uniform_float("u_material.shininess")),
-            unshaded=kwargs.get("unshaded", self.unshaded),
-            receive_ambient=kwargs.get("receive_ambient", self.receive_ambient),
+            params=p,
             diffuse_texture=kwargs.get("diffuse_texture", self.diff_tex_id),
-            vertID=kwargs.get("vertID", self.vert_id),
-            fragID=kwargs.get("fragID", self.frag_id),
+            vert_shader_path=kwargs.get("vert_shader_path", self.vert_shader_path),
+            frag_shader_path=kwargs.get("frag_shader_path", self.frag_shader_path),
         )
 
     @staticmethod
-    def get_shader_program(vert_path : [int|str], frag_path : [int|str], src_dir):
+    def get_shader_program(vert_path : str, frag_path : str):
         print("Creating shader program...")
 
-        if type(vert_path) == str:
-            vert_shader = MeshShader.compile_shader(vert_path, GL_VERTEX_SHADER, shader_folder=src_dir)
-        else:
-            vert_shader = vert_path
-
-        if type(frag_path) == str:
-            frag_shader = MeshShader.compile_shader(frag_path, GL_FRAGMENT_SHADER, shader_folder=src_dir)
-        else:
-            frag_shader = frag_path
+        vert_shader = MeshShader.compile_shader(vert_path, GL_VERTEX_SHADER)
+        frag_shader = MeshShader.compile_shader(frag_path, GL_FRAGMENT_SHADER)
 
         progID = glCreateProgram()
 
@@ -110,15 +98,15 @@ class MeshShader:
 
         assert glGetProgramiv(progID, GL_LINK_STATUS) == 1, print("Failed to link")
 
-        return progID, vert_shader, frag_shader
+        return progID
 
     @staticmethod
-    def compile_shader(shader_file: str, shader_type: int, use_fallback = True, shader_folder: str = ""):
+    def compile_shader(shader_file: str, shader_type: int, use_fallback = True):
         assert shader_type in [GL_VERTEX_SHADER, GL_FRAGMENT_SHADER], print("Invalid shader type")
 
         shader_path = shader_file
-        if shader_folder != "":
-            shader_path = path.join(shader_folder, shader_file)
+        """if shader_folder != "":
+            shader_path = path.join(shader_folder, shader_file)"""
 
         print(f"\tCompiling shader file {shader_path}...", end="")
 
@@ -150,7 +138,7 @@ class MeshShader:
 
         glCompileShader(shader_id)
         result = glGetShaderiv(shader_id, GL_COMPILE_STATUS)
-        assert result == 1, print(f"Couldn't compile vertex shader\nShader compilation Log:\n{str(glGetShaderInfoLog(shader_id))}")
+        assert result == 1, print(f"Couldn't compile shader\nShader compilation Log:\n{str(glGetShaderInfoLog(shader_id))}")
 
         lookup[shader_path] = shader_id
 
@@ -273,6 +261,14 @@ class MeshShader:
         glActiveTexture(GL_TEXTURE0 + texture_slot)
         glBindTexture(GL_TEXTURE_2D, texture_id)
 
+    def set_material_uniforms(self, params):
+        self.set_material_diffuse(params["diffuse_color"])
+        self.set_material_specular(params["specular_color"])
+        self.set_material_ambient(params["ambient_color"])
+        self.set_unshaded(params["unshaded"])
+        self.set_receive_ambient(params["receive_ambient"])
+        self.set_shininess(params["shininess"])
+
     def set_camera_uniforms(self, camera: 'Camera'):
         self.set_uniform_matrix(camera.projection_matrix, "u_projection_matrix")
         self.set_uniform_matrix(camera.view_matrix, "u_view_matrix")
@@ -301,6 +297,8 @@ class MeshShader:
         if not isinstance(lights, Collection):
             lights = [lights]
 
+        self.set_uniform_int(len(lights), "u_light_count")
+
         for idx, l in enumerate(lights):
             self.set_uniform_vec3D(l.origin, f"u_lights[{idx}].position")
             self.set_uniform_float(l.radius, f"u_lights[{idx}].radius")
@@ -309,24 +307,24 @@ class MeshShader:
             self.set_uniform_color(l.ambient, f"u_lights[{idx}].ambient")
 
     def set_material_diffuse(self, color):
-        self.set_uniform_color(color, "u_material.diffuse")
+        self.set_uniform_color(color, "u_material.diffuse_color")
 
     def set_diffuse_texture(self, diff_tex_id):
         self.set_uniform_bool((diff_tex_id > 0), "u_material.has_texture")
         self.set_uniform_sampler2D("u_material.diffuse_tex", 0)
 
     def set_material_specular(self, color):
-        self.set_uniform_color(color, "u_material.specular")
+        self.set_uniform_color(color, "u_material.specular_color")
 
     def set_material_ambient(self, color):
-        self.set_uniform_color(color, "u_material.ambient")
+        self.set_uniform_color(color, "u_material.ambient_color")
 
     def set_unshaded(self, state: bool):
-        self.unshaded = state
+        # self.unshaded = state
         self.set_uniform_bool(state, "u_material.unshaded")
 
     def set_receive_ambient(self, state: bool):
-        self.receive_ambient = state
+        # self.receive_ambient = state
         self.set_uniform_bool(state, "u_material.receive_ambient")
 
     def set_shininess(self, value: float):
