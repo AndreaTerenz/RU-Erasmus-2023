@@ -45,6 +45,7 @@ class Mesh(ABC):
 
         shader.set_light_uniforms(app.lights)
         shader.set_camera_uniforms(app.camera)
+        shader.set_environment_uniforms(app.environment)
 
         time = np.float32(app.ticks / 1000.)
         shader.set_time(time)

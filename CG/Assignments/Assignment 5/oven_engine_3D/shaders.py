@@ -8,6 +8,7 @@ from OpenGL.GLU import *
 from OpenGL.error import GLError
 from pygame import Color
 
+from oven_engine_3D.environment import Environment
 from oven_engine_3D.utils.matrices import Matrix
 from oven_engine_3D.utils.textures import TexturesManager
 from oven_engine_3D.utils.geometry import Vector3D
@@ -60,7 +61,7 @@ class MeshShader:
 
         self.use()
         self.set_diffuse_texture(self.diff_tex_id)
-        self.set_material_uniforms(self.params)
+        self.set_material_uniforms()
 
         print()
 
@@ -261,18 +262,30 @@ class MeshShader:
         glActiveTexture(GL_TEXTURE0 + texture_slot)
         glBindTexture(GL_TEXTURE_2D, texture_id)
 
-    def set_material_uniforms(self, params):
-        self.set_material_diffuse(params["diffuse_color"])
-        self.set_material_specular(params["specular_color"])
-        self.set_material_ambient(params["ambient_color"])
-        self.set_unshaded(params["unshaded"])
-        self.set_receive_ambient(params["receive_ambient"])
-        self.set_shininess(params["shininess"])
+    def set_material_uniforms(self, params = None):
+        if params is None:
+            params = self.params
+
+        self.set_uniform_color(params["diffuse_color"], "u_material.diffuse_color")
+        self.set_uniform_color(params["specular_color"], "u_material.specular_color")
+        self.set_uniform_color(params["ambient_color"], "u_material.ambient_color")
+        self.set_uniform_bool (params["unshaded"], "u_material.unshaded")
+        self.set_uniform_bool (params["receive_ambient"], "u_material.receive_ambient")
+        self.set_uniform_float(params["shininess"], "u_material.shininess")
 
     def set_camera_uniforms(self, camera: 'Camera'):
         self.set_uniform_matrix(camera.projection_matrix, "u_projection_matrix")
         self.set_uniform_matrix(camera.view_matrix, "u_view_matrix")
         self.set_uniform_vec3D(camera.view_matrix.eye, "u_camera_position")
+
+    def set_environment_uniforms(self, env: Environment):
+        self.set_uniform_color(env.global_ambient, "u_env.global_ambient")
+        self.set_uniform_color(env.fog_color, "u_env.fog_color")
+        self.set_uniform_float(env.start_fog, "u_env.start_fog")
+        self.set_uniform_float(env.end_fog, "u_env.end_fog")
+        self.set_uniform_float(env.fog_density, "u_env.fog_density")
+        self.set_uniform_bool(env.fog_enabled, "u_env.fog_enabled")
+        self.set_uniform_int(env.fog_mode.value, "u_env.fog_mode")
 
     def set_model_matrix(self, matrix):
         self.set_uniform_matrix(matrix, "u_model_matrix")
@@ -306,29 +319,9 @@ class MeshShader:
             self.set_uniform_color(l.color, f"u_lights[{idx}].specular")
             self.set_uniform_color(l.ambient, f"u_lights[{idx}].ambient")
 
-    def set_material_diffuse(self, color):
-        self.set_uniform_color(color, "u_material.diffuse_color")
-
     def set_diffuse_texture(self, diff_tex_id):
         self.set_uniform_bool((diff_tex_id > 0), "u_material.has_texture")
         self.set_uniform_sampler2D("u_material.diffuse_tex", 0)
-
-    def set_material_specular(self, color):
-        self.set_uniform_color(color, "u_material.specular_color")
-
-    def set_material_ambient(self, color):
-        self.set_uniform_color(color, "u_material.ambient_color")
-
-    def set_unshaded(self, state: bool):
-        # self.unshaded = state
-        self.set_uniform_bool(state, "u_material.unshaded")
-
-    def set_receive_ambient(self, state: bool):
-        # self.receive_ambient = state
-        self.set_uniform_bool(state, "u_material.receive_ambient")
-
-    def set_shininess(self, value: float):
-        self.set_uniform_float(value, "u_material.shininess")
 
     def set_time(self, value: float):
         self.set_uniform_float(value, "u_time")

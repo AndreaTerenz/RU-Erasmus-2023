@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 
 from pygame.locals import *
 
+from oven_engine_3D.environment import Environment
 from oven_engine_3D.shaders import *
 from oven_engine_3D.camera import *
 from oven_engine_3D.utils.geometry import Vector2D
@@ -17,6 +18,7 @@ class BaseApp3D(ABC):
                  ambient_color = None,
                  update_camera = True,
                  face_culling = True,
+                 environment : Environment = None
                  ):
 
         pg.init()
@@ -61,6 +63,12 @@ class BaseApp3D(ABC):
         self.objects = []
         self.avg_fps = 0.
         self.target_fps = 60.
+
+        if environment is None:
+            environment = Environment(clear_color)
+
+        self.environment = environment
+
 
     def _update(self):
         delta = self.clock.tick(self.target_fps) / 1000.0

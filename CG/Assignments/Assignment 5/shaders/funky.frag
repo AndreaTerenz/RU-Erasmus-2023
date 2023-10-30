@@ -1,3 +1,11 @@
+/*struct Franco
+{
+	vec4 global_ambient;
+	vec4 fog_color;
+	float start_fog, end_fog;
+};
+uniform Franco u_env;*/
+
 struct Light
 {
 	vec4 diffuse,
