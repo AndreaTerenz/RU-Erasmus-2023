@@ -1,7 +1,6 @@
 from abc import abstractmethod, ABC
 
 import shortuuid
-from pygame import Color
 
 from oven_engine_3D.meshes import CubeMesh, PlaneMesh, Mesh, OBJMesh, SphereMesh
 from oven_engine_3D.shaders import MeshShader
@@ -69,7 +68,7 @@ class Entity(ABC):
 
 class MeshEntity(Entity):
 
-    def __init__(self, parent_app, mesh: [str|Mesh], origin=Vector3D.ZERO, rotation=Vector3D.ZERO, scale=Vector3D.ONE, name="", color=Color("magenta"), shader=None):
+    def __init__(self, parent_app, mesh: [str|Mesh], origin=Vector3D.ZERO, rotation=Vector3D.ZERO, scale=Vector3D.ONE, name="", color="white", shader=None):
         super().__init__(parent_app, origin, rotation, scale, name=name)
 
         if shader is None:
@@ -95,7 +94,7 @@ class MeshEntity(Entity):
 
 class Cube(MeshEntity):
 
-    def __init__(self, parent_app, origin=Vector3D.ZERO, rotation=Vector3D.ZERO, scale=Vector3D.ONE, uv_mode = CubeMesh.UVMode.SAME, name="", color=Color("white"), shader=None):
+    def __init__(self, parent_app, origin=Vector3D.ZERO, rotation=Vector3D.ZERO, scale=Vector3D.ONE, uv_mode = CubeMesh.UVMode.SAME, name="", color="white", shader=None):
         super().__init__(parent_app, mesh=CubeMesh(uv_mode=uv_mode), origin=origin, rotation=rotation, scale=scale, name=name, color=color, shader=shader)
 
 
@@ -106,7 +105,7 @@ class Cube(MeshEntity):
         pass
 
 class Sphere(MeshEntity):
-    def __init__(self, parent_app, origin=Vector3D.ZERO, rotation=Vector3D.ZERO, scale=Vector3D.ONE, slices=32, stacks=0, name="", color=Color("white"), shader=None):
+    def __init__(self, parent_app, origin=Vector3D.ZERO, rotation=Vector3D.ZERO, scale=Vector3D.ONE, slices=32, stacks=0, name="", color="white", shader=None):
         super().__init__(parent_app, mesh=SphereMesh(n_slices=slices, n_stacks=stacks), origin=origin, rotation=rotation, scale=scale, name=name, color=color, shader=shader)
 
 
@@ -118,7 +117,7 @@ class Sphere(MeshEntity):
 
 
 class Plane(MeshEntity):
-    def __init__(self, parent_app, origin=Vector3D.ZERO, normal=Vector3D.UP, scale=Vector3D.ONE, color=Color("white"),
+    def __init__(self, parent_app, origin=Vector3D.ZERO, normal=Vector3D.UP, scale=Vector3D.ONE, color="white",
                  name="", shader=None):
         rotation = Vector3D(*euler_from_vectors(normal))
 

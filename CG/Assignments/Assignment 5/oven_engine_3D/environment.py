@@ -1,4 +1,3 @@
-from pygame import Color
 from enum import Enum
 
 class Environment:
@@ -14,8 +13,8 @@ class Environment:
         REINHARD = 1
         UNCHARTED = 2
 
-    def __init__(self, global_ambient = Color("black"),
-                 fog_color = Color("gray"),
+    def __init__(self, global_ambient = "black",
+                 fog_color = "gray",
                  start_fog = 1.,
                  end_fog = 20.,
                  fog_density = .1,

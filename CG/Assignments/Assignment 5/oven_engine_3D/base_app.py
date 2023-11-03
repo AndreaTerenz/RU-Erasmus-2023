@@ -1,7 +1,5 @@
 from pygame.locals import *
 
-from pygame.locals import *
-
 from oven_engine_3D.camera import *
 from oven_engine_3D.shaders import *
 from oven_engine_3D.utils.geometry import Vector2D
@@ -11,7 +9,7 @@ class BaseApp3D(ABC):
     def __init__(self,
                  win_title   = "BaseApp",
                  win_size    = Vector2D(800,600),
-                 clear_color = Color("black"),
+                 clear_color = "black",
                  fullscreen  = True,
                  ambient_color = None,
                  update_camera = True,
@@ -32,6 +30,9 @@ class BaseApp3D(ABC):
         glViewport(0, 0, *self.win_size)
 
         self.ambient_color = ambient_color if ambient_color is not None else clear_color
+
+        if type(clear_color) is str:
+            clear_color = Color(clear_color)
 
         self.clear_color = clear_color
         glClearColor(*clear_color.normalize())
@@ -84,7 +85,12 @@ class BaseApp3D(ABC):
 
     def _display(self):
         glEnable(GL_DEPTH_TEST)
-        glEnable(GL_CULL_FACE)
+
+        if self.face_culling:
+            glEnable(GL_CULL_FACE)
+        else:
+            glDisable(GL_CULL_FACE)
+
         glCullFace(GL_FRONT)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 

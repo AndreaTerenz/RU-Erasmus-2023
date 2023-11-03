@@ -1,5 +1,4 @@
 import pygame as pg
-from pygame import Color
 
 from oven_engine_3D.camera import FPCamera
 from oven_engine_3D.entities import Entity
@@ -9,7 +8,7 @@ from oven_engine_3D.utils.geometry import Vector3D, Vector2D
 
 class PlayerLight(Light):
     def __init__(self, app, player, color):
-        super().__init__(parent_app=app, position=player.origin, color=color, radius=32., intensity=.5)
+        super().__init__(parent_app=app, position=player.origin, color=color, radius=0., intensity=.5)
 
         self.player = player
 
@@ -28,7 +27,7 @@ class Player(Entity):
         self.forward_dir = look_at.x0z.normalized
         self.speed = speed
         self.camera = FPCamera(parent_app, eye=origin + v_offset, look_at=look_at, sensitivity=80., **camera_params)
-        self.light = PlayerLight(parent_app, self, Color("white"))
+        self.light = PlayerLight(parent_app, self, "white")
 
         self.slide_keys = {
             pg.K_w: Vector3D.FORWARD,

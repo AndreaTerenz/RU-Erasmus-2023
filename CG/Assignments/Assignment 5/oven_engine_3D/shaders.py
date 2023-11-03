@@ -1,9 +1,9 @@
 import os.path
-import os.path as path
 from abc import abstractmethod, ABC
 from typing import Collection
 
 import OpenGL.GLUT
+import numpy as np
 from OpenGL.GL import *
 from OpenGL.GLU import *
 from OpenGL.error import GLError
@@ -15,10 +15,6 @@ from oven_engine_3D.utils.misc import is_collection
 from oven_engine_3D.utils.textures import TexturesManager
 
 DEFAULT_SHADER_DIR = "shaders"
-DEFAULT_VERTEX = os.path.join(DEFAULT_SHADER_DIR, "simple3D.vert")
-DEFAULT_FRAG =  os.path.join(DEFAULT_SHADER_DIR, "simple3D.frag")
-SKY_VERTEX = os.path.join(DEFAULT_SHADER_DIR, "sky.vert")
-SKY_FRAG = os.path.join(DEFAULT_SHADER_DIR, "sky.frag")
 
 def add_missing(dict1, dict2):
     dict1.update({key:value for key,value in dict2.items() if not key in dict1})
@@ -27,8 +23,14 @@ class BaseShader(ABC):
     compiled_vert_shaders = {}
     compiled_frag_shaders = {}
 
-    def __init__(self, params=None,
-                 vert_shader_path = DEFAULT_VERTEX, frag_shader_path = DEFAULT_FRAG):
+    class ShaderAttribute:
+        def __init__(self, attrib_name: str, attrib_loc: int, attrib_elem_count: int, attrib_type: int):
+            self.name = attrib_name
+            self.loc = attrib_loc
+            self.elem_count = attrib_elem_count
+            self.type = attrib_type
+
+    def __init__(self, vert_shader_path, frag_shader_path, params=None):
 
         self.vert_shader_path = vert_shader_path
         self.frag_shader_path = frag_shader_path
@@ -36,6 +38,7 @@ class BaseShader(ABC):
         self.renderingProgramID = MeshShader.get_shader_program(self.vert_shader_path, self.frag_shader_path)
 
         self.uniform_locations = {}
+        self.attributes = {}
 
         def_params = self.__class__.get_default_params()
         if params is None:
@@ -43,6 +46,15 @@ class BaseShader(ABC):
 
         self.params = params
         add_missing(self.params, def_params)
+
+    def add_attribute(self, attrib_name, attrib_elem_count, attrib_type):
+        if attrib_name in self.attributes:
+            return
+
+        attrib_loc = self.enable_attrib_array(attrib_name)
+        self.attributes[attrib_name] = BaseShader.ShaderAttribute(attrib_name, attrib_loc, attrib_elem_count, attrib_type)
+
+        return attrib_loc
 
     @staticmethod
     @abstractmethod
@@ -69,7 +81,7 @@ class BaseShader(ABC):
         return progID
 
     @staticmethod
-    def compile_shader_file(shader_file: str, shader_type: int, use_fallback=True):
+    def compile_shader_file(shader_file: str, shader_type: int):
         assert shader_type in [GL_VERTEX_SHADER, GL_FRAGMENT_SHADER], print("Invalid shader type")
 
         shader_path = shader_file
@@ -92,17 +104,7 @@ class BaseShader(ABC):
             with open(shader_path) as shader_file:
                 glShaderSource(shader_id, shader_file.read())
         except FileNotFoundError:
-            assert use_fallback, print("Fallback shader disabled - compilation failed")
-
-            print(f"Unable to find shader source - using fallback shader")
-
-            fallback_path = ""
-            if shader_type == GL_VERTEX_SHADER:
-                fallback_path = path.join(DEFAULT_SHADER_DIR, DEFAULT_VERTEX)
-            elif shader_type == GL_FRAGMENT_SHADER:
-                fallback_path = path.join(DEFAULT_SHADER_DIR, DEFAULT_FRAG)
-
-            return MeshShader.compile_shader_file(fallback_path, shader_type, False)
+            assert False, print("Shader compilation failed")
 
         glCompileShader(shader_id)
         result = glGetShaderiv(shader_id, GL_COMPILE_STATUS)
@@ -123,16 +125,12 @@ class BaseShader(ABC):
         glActiveTexture(GL_TEXTURE0 + texture_slot)
         glBindTexture(GL_TEXTURE_2D, texture_id)
 
-    @staticmethod
-    def link_attrib_vbo(vbo, locations: [int | Collection[int]], values_per_attrib: [int | Collection[int]], attrib_types: [int | Collection[int]]):
-        if not is_collection(locations):
-            locations = [locations]
+    def link_attrib_vbo(self, vbo):
+        attrib_objects = [a for a in self.attributes.values()]
 
-        if type(values_per_attrib) is int:
-            values_per_attrib = [values_per_attrib] * len(locations)
-
-        if not is_collection(attrib_types):
-            attrib_types = [attrib_types] * len(locations)
+        locations = [a.loc for a in attrib_objects]
+        values_per_attrib = [a.elem_count for a in attrib_objects]
+        attrib_types = [a.type for a in attrib_objects]
 
         attrib_sizes = [sizeof(t) for t in attrib_types]
         total_size = sum([s * v for s, v in zip(attrib_sizes, values_per_attrib)])
@@ -148,6 +146,8 @@ class BaseShader(ABC):
 
     @staticmethod
     def __get_color(color):
+        if type(color) is str:
+            color = Color(color)
         if type(color) is Color:
             color = color.normalize()
         elif type(color) in [int, float]:
@@ -254,68 +254,21 @@ class BaseShader(ABC):
         loc = self.get_uniform_loc(uniform_name)
         glUniform1i(loc, texture_slot)
 
-"""class SkyboxShader(BaseShader):
-    vbo = -1
-
-    def __init__(self, cubemap_id, vert_shader_path = SKY_VERTEX, frag_shader_path = SKY_FRAG, params=None):
-        assert cubemap_id > 0, "Skybox needs a valid cubemap ID"
-
-        super().__init__(params=params, vert_shader_path=vert_shader_path, frag_shader_path=frag_shader_path)
-
-        self.positionLoc = self.enable_attrib_array("a_position")
-
-        if SkyboxShader.vbo == -1:
-            skyboxVertices = list(chain.from_iterable(CubeMesh.CUBE_POSITION_ARRAY))
-            SkyboxShader.vbo = new_vbo(skyboxVertices)
-
-        self.cubemap = cubemap_id
-
-    def set_projview(self, p_matrix, v_matrix):
-        self.set_uniform_matrix(p_matrix.values, "u_projection")
-
-        v_mat = v_matrix.values
-        v_mat = np.array(v_mat).reshape(4, 4)
-        # Remove translation
-        v_mat[:, 3] = 0
-        v_mat = v_mat.flatten()
-
-        self.set_uniform_matrix(v_mat, "u_view")
-
-    @staticmethod
-    def get_default_params():
-        return {}
-
-    def draw(self, p_matrix, v_matrix):
-        glDepthMask(GL_FALSE)
-        glDisable(GL_CULL_FACE)
-
-        self.use()
-        self.set_projview(p_matrix, v_matrix)
-
-        glActiveTexture(GL_TEXTURE0)
-        glBindTexture(GL_TEXTURE_CUBE_MAP, self.cubemap)
-        self.set_uniform_int(0, "cubemap")
-
-        BaseShader.link_attrib_vbo(SkyboxShader.vbo, self.positionLoc, 3, GLfloat)
-
-        glBindBuffer(GL_ARRAY_BUFFER, self.vbo)
-        glDrawArrays(GL_TRIANGLES, 0, 36)
-        glBindBuffer(GL_ARRAY_BUFFER, 0)
-
-        glDepthMask(GL_TRUE)
-        #glEnable(GL_CULL_FACE)"""
-
 class MeshShader(BaseShader):
+    DEFAULT_VERTEX = os.path.join(DEFAULT_SHADER_DIR, "mesh.vert")
+    DEFAULT_FRAG =  os.path.join(DEFAULT_SHADER_DIR, "mesh.frag")
 
-    def __init__(self,
-                 vert_shader_path = DEFAULT_VERTEX, frag_shader_path = DEFAULT_FRAG,
-                 diffuse_texture : [int|str] = "", params=None):
+    def __init__(self, diffuse_texture : [int|str] = "", params=None, ignore_camera_pos=False):
 
-        super().__init__(params=params, vert_shader_path=vert_shader_path, frag_shader_path=frag_shader_path)
+        super().__init__(params=params,
+                         vert_shader_path=MeshShader.DEFAULT_VERTEX,
+                         frag_shader_path=MeshShader.DEFAULT_FRAG)
 
-        self.positionLoc = self.enable_attrib_array("a_position")
-        self.normalLoc   = self.enable_attrib_array("a_normal")
-        self.uvLoc       = self.enable_attrib_array("a_uv")
+        self.add_attribute("a_position", 3, GLfloat)
+        self.add_attribute("a_normal", 3, GLfloat)
+        self.add_attribute("a_uv", 2, GLfloat)
+
+        self.ignore_camera_pos = ignore_camera_pos
 
         self.diff_tex_id = -1
         if type(diffuse_texture) is int and diffuse_texture >= 0:
@@ -343,14 +296,12 @@ class MeshShader(BaseShader):
         return MeshShader(
             params=p,
             diffuse_texture=kwargs.get("diffuse_texture", self.diff_tex_id),
-            vert_shader_path=kwargs.get("vert_shader_path", self.vert_shader_path),
-            frag_shader_path=kwargs.get("frag_shader_path", self.frag_shader_path),
         )
 
     @staticmethod
     def get_default_params():
         return {
-                "diffuse_color" : Color("white"),
+                "diffuse_color" : "white",
                 "specular_color" : (.2, .2, .2),
                 "ambient_color" : (.1, .1, .1),
                 "shininess" : 5.,
@@ -374,7 +325,17 @@ class MeshShader(BaseShader):
 
     def set_camera_uniforms(self, camera: 'Camera'):
         self.set_uniform_matrix(camera.projection_matrix.values, "u_projection_matrix")
-        self.set_uniform_matrix(camera.view_matrix.values, "u_view_matrix")
+
+        v = camera.view_matrix.values
+
+        if self.ignore_camera_pos:
+
+            v = np.array(v, dtype="float32").reshape(4,4)
+            v[:3, 3] = 0
+            v = v.flatten()
+
+        # self.set_uniform_matrix(camera.view_matrix.values, "u_view_matrix")
+        self.set_uniform_matrix(v, "u_view_matrix")
         self.set_uniform_vec3D(camera.view_matrix.eye, "u_camera_position")
 
     def set_environment_uniforms(self, env: Environment):
@@ -404,14 +365,51 @@ class MeshShader(BaseShader):
     def set_model_matrix(self, matrix):
         self.set_uniform_matrix(matrix.values, "u_model_matrix")
 
-    def set_mesh_attributes(self, mesh_vbo: int):
-        locations = [self.positionLoc, self.normalLoc, self.uvLoc]
-
-        BaseShader.link_attrib_vbo(mesh_vbo, locations, [3, 3, 2], GLfloat)
-
     def set_diffuse_texture(self, diff_tex_id):
         self.set_uniform_bool((diff_tex_id > 0), "u_material.has_texture")
         self.set_uniform_sampler2D("u_material.diffuse_tex", 0)
 
     def set_time(self, value: float):
         self.set_uniform_float(value, "u_time")
+
+class SkyboxShader(BaseShader):
+    SKY_VERTEX = os.path.join(DEFAULT_SHADER_DIR, "sky.vert")
+    SKY_FRAG = os.path.join(DEFAULT_SHADER_DIR, "sky.frag")
+
+    def __init__(self, diffuse_texture : [int|str] = "", params=None):
+
+        super().__init__(params=params,
+                         vert_shader_path=SkyboxShader.SKY_VERTEX,
+                         frag_shader_path=SkyboxShader.SKY_FRAG)
+
+        self.add_attribute("a_position", 3, GLfloat)
+        self.add_attribute("a_normal", 3, GLfloat)
+        self.add_attribute("a_uv", 2, GLfloat)
+
+        self.diff_tex_id = -1
+        if type(diffuse_texture) is int and diffuse_texture >= 0:
+            self.diff_tex_id = diffuse_texture
+        elif type(diffuse_texture) is str and diffuse_texture != "":
+            self.diff_tex_id = TexturesManager.load_texture(diffuse_texture, filtering=GL_LINEAR)
+
+        print()
+
+    def set_material_uniforms(self, params = None):
+        if params is None:
+            params = self.params
+
+        self.set_uniform_color(params["diffuse_color"], "u_material.diffuse_color")
+
+    def set_camera_uniforms(self, camera: 'Camera'):
+        self.set_uniform_matrix(camera.projection_matrix.values, "u_projection_matrix")
+        self.set_uniform_matrix(camera.view_matrix.values, "u_view_matrix")
+
+    def set_environment_uniforms(self, env: Environment):
+        self.set_uniform_int(env.tonemap.value, "u_env.tonemap_mode")
+
+    @staticmethod
+    def get_default_params():
+        return {}
+
+
+

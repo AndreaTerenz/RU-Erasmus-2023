@@ -39,19 +39,19 @@ class Mesh(ABC):
 
     def draw(self, app: 'BaseApp3D', shader: "MeshShader",
              offset: Vector3D = Vector3D.ZERO, scale: Vector3D = Vector3D.ONE, rotation: Vector3D = Vector3D.ZERO,
-             model_matrix=None):
+             model_matrix=None, camera_override=None, lights_override=None, env_override=None):
         if model_matrix is None:
             model_matrix = ModelMatrix.from_transformations(offset, rotation, scale)
 
         shader.use()
 
-        shader.set_mesh_attributes(self.vbo)
+        shader.link_attrib_vbo(self.vbo)
         shader.set_model_matrix(model_matrix)
         shader.activate_diffuse_text()
 
-        shader.set_light_uniforms(app.lights)
-        shader.set_camera_uniforms(app.camera)
-        shader.set_environment_uniforms(app.environment)
+        shader.set_light_uniforms(app.lights if lights_override is None else lights_override)
+        shader.set_camera_uniforms(app.camera if camera_override is None else camera_override)
+        shader.set_environment_uniforms(app.environment if env_override is None else env_override)
 
         time = np.float32(app.ticks / 1000.)
         shader.set_time(time)
@@ -114,48 +114,45 @@ class CubeMesh(Mesh):
                               [1., 0.], ] * 6)
 
     # Coordinates for a cross-shaped UV map
-    CUBE_UV_ARRAY2 = np.array([[3./4., 2./3.],
-                                 [3./4., 1./3.],
-                                 [1., 1./3.],
-                                 [1., 2/3.],
+    CUBE_UV_ARRAY2 = np.array([[3./4., 1./3.],
+                                 [3./4., 2./3.],
+                                 [1., 2./3.],
+                                 [1., 1/3.],
 
+                                 [1./4., 1./3.],
                                  [1./4., 2./3.],
+                                 [1./2., 2./3.],
+                                 [1./2., 1./3.],
+
+                                 [1./4., 0],
                                  [1./4., 1./3.],
                                  [1./2., 1./3.],
-                                 [1./2., 2./3.],
-
-                                 [1./4., 1.],
-                                 [1./4., 2./3.],
-                                 [1./2., 2./3.],
-                                 [1./2., 1.],
-
-                                 [1./4., 1./3.],
-                                 [1./4., 0.],
                                  [1./2., 0.],
-                                 [1./2., 1./3.],
 
-                                 [0., 2./3.],
-                                 [0., 1./3.],
-                                 [1./4., 1./3.],
                                  [1./4., 2./3.],
-
+                                 [1./4., 1],
+                                 [1./2., 1],
                                  [1./2., 2./3.],
+
+                                 [0., 1./3.],
+                                 [0., 2./3.],
+                                 [1./4., 2./3.],
+                                 [1./4., 1./3.],
+
                                  [1./2., 1./3.],
-                                 [3./4., 1./3.],
-                                 [3./4., 2./3.],])
+                                 [1./2., 2./3.],
+                                 [3./4., 2./3.],
+                                 [3./4., 1./3.],])
 
     class UVMode(Enum):
         SAME = 0
         CROSS = 1
 
     def __init__(self, uv_mode = UVMode.SAME):
-        uvs = CubeMesh.CUBE_UV_ARRAY if uv_mode == CubeMesh.UVMode.SAME else CubeMesh.CUBE_UV_ARRAY2
+        uvs = (CubeMesh.CUBE_UV_ARRAY if uv_mode == CubeMesh.UVMode.SAME else CubeMesh.CUBE_UV_ARRAY2)
 
         pos = CubeMesh.CUBE_POSITION_ARRAY
         nor = CubeMesh.CUBE_NORMAL_ARRAY
-
-        if uv_mode == CubeMesh.UVMode.CROSS:
-            pos *= -1
 
         super().__init__(pos, nor, uvs,
                          4, 6)
