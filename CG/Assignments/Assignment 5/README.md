@@ -8,8 +8,11 @@ Requires Python 3.11 or higher
   - [x] ~~select [multiple tonemapping operators](https://64.github.io/tonemapping)~~
 - [x] ~~Fog~~
 - [ ] Screenshot hotkey
-- [ ] [Skybox](https://learnopengl.com/Advanced-OpenGL/Cubemaps)
+- [x] ~~[Skybox](https://learnopengl.com/Advanced-OpenGL/Cubemaps)~~
   - [x] ~~Split shader back into "BaseShader" and "MeshShader"~~ (to make the SkyShader a separate subclass)
+  - [ ] Compute global ambient color from skybox
+  - [ ] Skybox rotation
+  - [ ] Add exposure parameter
 - [ ] Use buffer indices instead of having to repeat vertex data for position, normal, uv, etc... 
 - [ ] Code to generate additional meshes
   - [x] ~~Sphere~~

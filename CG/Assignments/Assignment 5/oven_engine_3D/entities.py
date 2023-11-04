@@ -1,9 +1,10 @@
 from abc import abstractmethod, ABC
 
 import shortuuid
+from OpenGL.GL import *
 
 from oven_engine_3D.meshes import CubeMesh, PlaneMesh, Mesh, OBJMesh, SphereMesh
-from oven_engine_3D.shaders import MeshShader
+from oven_engine_3D.shaders import MeshShader, SkyboxShader
 from oven_engine_3D.utils.geometry import Vector3D, euler_from_vectors
 from oven_engine_3D.utils.matrices import ModelMatrix
 
@@ -66,7 +67,7 @@ class Entity(ABC):
         pass
 
 
-class MeshEntity(Entity):
+class DrawnEntity(Entity):
 
     def __init__(self, parent_app, mesh: [str|Mesh], origin=Vector3D.ZERO, rotation=Vector3D.ZERO, scale=Vector3D.ONE, name="", color="white", shader=None):
         super().__init__(parent_app, origin, rotation, scale, name=name)
@@ -82,8 +83,7 @@ class MeshEntity(Entity):
         self.mesh = mesh
 
     def draw(self):
-        self.shader.setup_for_draw(app=self.parent_app, mesh=self.mesh, model_matrix=self.model_matrix)
-        self.mesh.draw()
+        self.shader.draw(app=self.parent_app, mesh=self.mesh, model_matrix=self.model_matrix)
 
     def _update(self, delta):
         pass
@@ -92,7 +92,7 @@ class MeshEntity(Entity):
         pass
 
 
-class Cube(MeshEntity):
+class Cube(DrawnEntity):
 
     def __init__(self, parent_app, origin=Vector3D.ZERO, rotation=Vector3D.ZERO, scale=Vector3D.ONE, uv_mode = CubeMesh.UVMode.SAME, name="", color="white", shader=None):
         super().__init__(parent_app, mesh=CubeMesh(uv_mode=uv_mode), origin=origin, rotation=rotation, scale=scale, name=name, color=color, shader=shader)
@@ -104,9 +104,31 @@ class Cube(MeshEntity):
     def _update(self, delta):
         pass
 
-class Sphere(MeshEntity):
-    def __init__(self, parent_app, origin=Vector3D.ZERO, rotation=Vector3D.ZERO, scale=Vector3D.ONE, slices=32, stacks=0, name="", color="white", shader=None):
-        super().__init__(parent_app, mesh=SphereMesh(n_slices=slices, n_stacks=stacks), origin=origin, rotation=rotation, scale=scale, name=name, color=color, shader=shader)
+class Skybox(DrawnEntity):
+    def __init__(self, parent_app, cubemap_text):
+        shader = SkyboxShader(cubemap_id=cubemap_text)
+        # super().__init__(parent_app, mesh=SkyboxMesh(), name="skybox", shader=shader)
+        super().__init__(parent_app, mesh=shader.sky_mesh, name="skybox", shader=shader)
+
+    def draw(self):
+        glDisable(GL_CULL_FACE)
+        glDepthFunc(GL_LEQUAL)
+        self.shader.draw(app=self.parent_app)#, mesh=self.mesh)
+        glDepthFunc(GL_LESS)
+        glEnable(GL_CULL_FACE)
+
+    def handle_event(self, ev):
+        pass
+
+    def _update(self, delta):
+        pass
+
+class Sphere(DrawnEntity):
+    def __init__(self, parent_app, origin=Vector3D.ZERO, rotation=Vector3D.ZERO, scale=Vector3D.ONE,
+                 slices=32, stacks=0, name="", color="white", shader=None):
+        mesh = SphereMesh(n_slices=slices, n_stacks=stacks)
+        super().__init__(parent_app, mesh=mesh, origin=origin, rotation=rotation, scale=scale,
+                         name=name, color=color, shader=shader)
 
 
     def handle_event(self, ev):
@@ -116,12 +138,13 @@ class Sphere(MeshEntity):
         pass
 
 
-class Plane(MeshEntity):
+class Plane(DrawnEntity):
     def __init__(self, parent_app, origin=Vector3D.ZERO, normal=Vector3D.UP, scale=Vector3D.ONE, color="white",
                  name="", shader=None):
         rotation = Vector3D(*euler_from_vectors(normal))
 
-        super().__init__(parent_app, mesh=PlaneMesh(), origin=origin, rotation=rotation, scale=scale, name=name, color=color, shader=shader)
+        super().__init__(parent_app, mesh=PlaneMesh(), origin=origin, rotation=rotation, scale=scale,
+                         name=name,color=color, shader=shader)
 
     def _update(self, delta):
         pass

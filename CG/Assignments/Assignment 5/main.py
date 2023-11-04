@@ -1,15 +1,14 @@
 import math
 
-from OpenGL.GL import *
 from pygame import Color
 
 from game_entities import Player
 from oven_engine_3D.base_app import BaseApp3D
-from oven_engine_3D.entities import Plane, MeshEntity, Cube, Sphere
+from oven_engine_3D.entities import Plane, DrawnEntity, Cube, Sphere, Skybox
 from oven_engine_3D.environment import Environment
-from oven_engine_3D.meshes import CubeMesh
 from oven_engine_3D.shaders import MeshShader
 from oven_engine_3D.utils.geometry import Vector3D
+from oven_engine_3D.utils.textures import TexturesManager
 
 
 class Assignment5(BaseApp3D):
@@ -17,8 +16,9 @@ class Assignment5(BaseApp3D):
         super().__init__(fullscreen=True, ambient_color="white",
                          clear_color=Color(30, 30, 30), update_camera=False,
                          environment=Environment(
+                             #global_ambient=Color(114, 230, 232),
                              fog_mode=Environment.FogMode.DISABLED, fog_density=.05,
-                             tonemap=Environment.Tonemapping.UNCHARTED
+                             tonemap=Environment.Tonemapping.ACES
                          ))
 
         ratio = self.win_size.aspect_ratio
@@ -30,17 +30,13 @@ class Assignment5(BaseApp3D):
 
         self.objects.append(Plane(self, origin=Vector3D.DOWN * 5., scale=30., color="white"))
 
-        sky_mat = MeshShader(diffuse_texture="res/textures/cubemap5.png", params={"unshaded": True}, ignore_camera_pos=True)
-        #sky_mat = SkyboxShader(diffuse_texture="res/textures/cubemap4.png", params={"unshaded": True})
-        self.skybox = Cube(uv_mode=CubeMesh.UVMode.CROSS, parent_app=self, shader=sky_mat)
-
         mat1 = MeshShader(diffuse_texture="res/textures/img1.png", params={"diffuse_color": "cyan", "unshaded": True})
         mat2 = mat1.variation(diffuse_texture="", params={"diffuse_color": "red", "unshaded": False})
         mat3 = mat2.variation(params={"diffuse_color": "yellow"})
 
         self.objects.append(Cube(parent_app=self, shader=mat1, origin=Vector3D.FORWARD * 3.))
-        self.objects.append(MeshEntity(mesh="res/models/teapot.obj", parent_app=self, shader=mat2))
-        self.objects.append(MeshEntity(mesh="res/models/bunny.obj", parent_app=self, shader=mat3))
+        self.objects.append(DrawnEntity(mesh="res/models/teapot.obj", parent_app=self, shader=mat2))
+        self.objects.append(DrawnEntity(mesh="res/models/bunny.obj", parent_app=self, shader=mat3))
 
         map_mat = MeshShader(diffuse_texture="res/textures/map.jpg")
         moon_mat = map_mat.variation(diffuse_texture="res/textures/map_moon.jpg")
@@ -52,15 +48,17 @@ class Assignment5(BaseApp3D):
         # self.objects.append(MeshEntity(mesh="res/models/monke.obj", parent_app=self, shader=mat5))
         """
 
+        sky_cubemap = TexturesManager.load_cubemap(px="px.jpg", nx="nx.jpg", py="py.jpg", ny="ny.jpg", pz="pz.jpg", nz="nz.jpg",
+                                                   folder="res\\textures\\skyes\\lake")
+
+        self.skybox = Skybox(parent_app=self, cubemap_text=sky_cubemap)
+        self.objects.append(self.skybox)
+
     def update(self, delta):
         pass
 
     def display(self):
-        glDepthMask(GL_FALSE)
-        glDisable(GL_CULL_FACE)
-        self.skybox.draw()
-        glEnable(GL_CULL_FACE)
-        glDepthMask(GL_TRUE)
+        pass
 
     def handle_event(self, event):
         return False

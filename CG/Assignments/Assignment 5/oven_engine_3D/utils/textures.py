@@ -1,13 +1,10 @@
 import os
-from typing import Collection
 
+import pygame.image as img
 from OpenGL.GL import *
 from OpenGL.constant import IntConstant
-from oven_engine_3D.utils.geometry import Vector2D
-from PIL import Image
-import pygame.image as img
 
-import numpy as np
+from oven_engine_3D.utils.geometry import Vector2D
 
 MISSING_TEXTURE = "res/textures/DB_missing_texture.png"
 
@@ -37,6 +34,7 @@ class TexturesManager:
         textID = glGenTextures(1)
 
         glBindTexture(GL_TEXTURE_2D, textID)
+
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filtering)
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filtering)
 
@@ -52,6 +50,8 @@ class TexturesManager:
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0)
 
         glTexImage2D(GL_TEXTURE_2D, 0, color_format, size.x, size.y, 0, pixel_format, GL_UNSIGNED_BYTE, tex_str)
+
+        glBindTexture(GL_TEXTURE_2D, 0)
 
         textID = int(textID)
 
@@ -77,19 +77,18 @@ class TexturesManager:
             print("done (cubemap already loaded)")
             return TexturesManager.cubemaps[cubemap_total_path]
 
-        faces_data = []
+        faces_data = [""] * 6
         faces_size = [Vector2D.ZERO] * 6
+        target_size = Vector2D.ZERO
         for idx in range(len(paths)):
             p = paths[idx]
             if folder is not None:
                 p = os.path.join(folder, p)
 
-            if not os.path.exists(p):
-                print(f"\tFace '{p}' not found")
-                p = MISSING_TEXTURE
+            assert os.path.exists(p), f"Cubemap face '{p}' not found!"
 
             surf = img.load(p)
-            faces_data.append(img.tostring(surf, "RGB", True))
+            faces_data[idx] = (img.tostring(surf, "RGB", False))
             faces_size[idx] = Vector2D(surf.get_size())
 
         cmapID = glGenTextures(1)
@@ -105,6 +104,8 @@ class TexturesManager:
         for idx in range(6):
             w, h = faces_size[idx]
             glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + idx, 0, GL_RGB, w, h, 0, GL_RGB, GL_UNSIGNED_BYTE, faces_data[idx])
+
+        glBindTexture(GL_TEXTURE_CUBE_MAP, 0)
 
         cmapID = int(cmapID)
 

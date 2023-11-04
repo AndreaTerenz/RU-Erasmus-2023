@@ -87,19 +87,19 @@ class BaseShader(ABC):
 
         progID = glCreateProgram()
 
-        assert progID != 0, print("Failed to create program")
+        assert progID != 0, "Failed to create program"
 
         glAttachShader(progID, vert_shader)
         glAttachShader(progID, frag_shader)
         glLinkProgram(progID)
 
-        assert glGetProgramiv(progID, GL_LINK_STATUS) == 1, print("Failed to link")
+        assert glGetProgramiv(progID, GL_LINK_STATUS) == 1, "Failed to link"
 
         return progID
 
     @staticmethod
     def compile_shader_file(shader_file: str, shader_type: int):
-        assert shader_type in [GL_VERTEX_SHADER, GL_FRAGMENT_SHADER], print("Invalid shader type")
+        assert shader_type in [GL_VERTEX_SHADER, GL_FRAGMENT_SHADER], "Invalid shader type"
 
         shader_path = shader_file
         """if shader_folder != "":
@@ -115,18 +115,17 @@ class BaseShader(ABC):
 
         shader_id = glCreateShader(shader_type)
 
-        assert shader_id != 0, print("Couldn't create shader")
+        assert shader_id != 0, "Couldn't create shader"
 
         try:
             with open(shader_path) as shader_file:
                 glShaderSource(shader_id, shader_file.read())
         except FileNotFoundError:
-            assert False, print("Shader compilation failed")
+            assert False, "Shader compilation failed"
 
         glCompileShader(shader_id)
         result = glGetShaderiv(shader_id, GL_COMPILE_STATUS)
-        assert result == 1, print(
-            f"Couldn't compile shader\nShader compilation Log:\n{str(glGetShaderInfoLog(shader_id))}")
+        assert result == 1, f"Couldn't compile shader\nShader compilation Log:\n{str(glGetShaderInfoLog(shader_id))}"
 
         lookup[shader_path] = shader_id
 
@@ -135,12 +134,12 @@ class BaseShader(ABC):
         return shader_id
 
     @staticmethod
-    def activate_texture(texture_id = -1, texture_slot = 0):
+    def activate_texture(texture_id = -1, texture_slot = 0, texture_type = GL_TEXTURE_2D):
         if texture_id <= 0:
             return
 
         glActiveTexture(GL_TEXTURE0 + texture_slot)
-        glBindTexture(GL_TEXTURE_2D, texture_id)
+        glBindTexture(texture_type, texture_id)
 
     def link_attrib_vbo(self, vbo, ordering):
         glBindBuffer(GL_ARRAY_BUFFER, vbo)
@@ -192,7 +191,7 @@ class BaseShader(ABC):
             raise
 
     @abstractmethod
-    def setup_for_draw(self, *args, **kwargs):
+    def draw(self, *args, **kwargs):
         pass
 
     def get_uniform_loc(self, uniform_name):
@@ -323,7 +322,7 @@ class MeshShader(BaseShader):
                 "receive_ambient" : True
             }
 
-    def setup_for_draw(self, *args, **kwargs):
+    def draw(self, *args, **kwargs):
         mesh = kwargs["mesh"]
         app = kwargs["app"]
         model_matrix = kwargs["model_matrix"]
@@ -339,6 +338,8 @@ class MeshShader(BaseShader):
 
         time = np.float32(app.ticks / 1000.)
         self.set_time(time)
+
+        mesh.draw()
 
     def activate_diffuse_text(self):
         BaseShader.activate_texture(self.diff_tex_id, texture_slot = 0)
@@ -356,16 +357,7 @@ class MeshShader(BaseShader):
 
     def set_camera_uniforms(self, camera: 'Camera'):
         self.set_uniform_matrix(camera.projection_matrix.values, "u_projection_matrix")
-
-        v = camera.view_matrix.values
-
-        if self.ignore_camera_pos:
-            v = np.array(v, dtype="float32").reshape(4,4)
-            v[:3, 3] = 0
-            v = v.flatten()
-
-        # self.set_uniform_matrix(camera.view_matrix.values, "u_view_matrix")
-        self.set_uniform_matrix(v, "u_view_matrix")
+        self.set_uniform_matrix(camera.view_matrix.values, "u_view_matrix")
         self.set_uniform_vec3D(camera.view_matrix.eye, "u_camera_position")
 
     def set_environment_uniforms(self, env: Environment):
@@ -406,41 +398,40 @@ class SkyboxShader(BaseShader):
     SKY_VERTEX = os.path.join(DEFAULT_SHADER_DIR, "sky.vert")
     SKY_FRAG = os.path.join(DEFAULT_SHADER_DIR, "sky.frag")
 
-    def __init__(self, diffuse_texture : [int|str] = "", params=None):
+    def __init__(self, cubemap_id : int):
+        # Ugly way to shut up circular import error
+        from oven_engine_3D.meshes import SkyboxMesh
 
-        super().__init__(params=params,
+        super().__init__(params=None,
                          vert_shader_path=SkyboxShader.SKY_VERTEX,
                          frag_shader_path=SkyboxShader.SKY_FRAG)
 
         self.add_attribute("a_position", 3, GLfloat, BaseShader.POS_ATTRIB_ID)
-        self.add_attribute("a_normal", 3, GLfloat, BaseShader.NORM_ATTRIB_ID)
-        self.add_attribute("a_uv", 2, GLfloat, BaseShader.UV_ATTRIB_ID)
 
-        self.diff_tex_id = -1
-        if type(diffuse_texture) is int and diffuse_texture >= 0:
-            self.diff_tex_id = diffuse_texture
-        elif type(diffuse_texture) is str and diffuse_texture != "":
-            self.diff_tex_id = TexturesManager.load_texture(diffuse_texture, filtering=GL_LINEAR)
+        self.sky_mesh = SkyboxMesh()
 
-        self.set_uniform_sampler2D(0, "u_material.diffuse_tex")
+        self.cubemap_id = cubemap_id
+
+        self.use()
+        self.set_uniform_sampler2D(0, "u_cubemap")
 
         print()
 
-    def setup_for_draw(self, *args, **kwargs):
-        mesh = kwargs["mesh"]
+    def draw(self, *args, **kwargs):
         app = kwargs["app"]
-        model_matrix = kwargs["model_matrix"]
 
         self.use()
-        self.link_attrib_vbo(mesh.vbo, mesh.attrib_order)
-        self.set_model_matrix(model_matrix)
-        self.activate_diffuse_text()
+        self.link_attrib_vbo(self.sky_mesh.vbo, self.sky_mesh.attrib_order)
+
+        BaseShader.activate_texture(self.cubemap_id, texture_type = GL_TEXTURE_CUBE_MAP)
 
         self.set_camera_uniforms(app.camera)
-        self.set_environment_uniforms(app.environment)
+        self.set_uniform_int(app.environment.tonemap.value, "u_tonemap_mode")
 
         time = np.float32(app.ticks / 1000.)
         self.set_time(time)
+
+        self.sky_mesh.draw()
 
     def set_material_uniforms(self, params = None):
         if params is None:
@@ -458,14 +449,11 @@ class SkyboxShader(BaseShader):
 
         self.set_uniform_matrix(v, "u_view_matrix")
 
-    def set_environment_uniforms(self, env: Environment):
-        self.set_uniform_int(env.tonemap.value, "u_env.tonemap_mode")
+    """def set_environment_uniforms(self, env: Environment):
+        self.set_uniform_int(env.tonemap.value, "u_tonemap_mode")
 
     def set_model_matrix(self, matrix):
-        self.set_uniform_matrix(matrix.values, "u_model_matrix")
-
-    def activate_diffuse_text(self):
-        BaseShader.activate_texture(self.diff_tex_id, texture_slot = 0)
+        self.set_uniform_matrix(matrix.values, "u_model_matrix")"""
 
     def set_time(self, value: float):
         self.set_uniform_float(value, "u_time")

@@ -142,6 +142,11 @@ class CubeMesh(Mesh):
         super().__init__(pos, nor, uvs,
                          4, 6)
 
+class SkyboxMesh(Mesh):
+    def __init__(self):
+        super().__init__(CubeMesh.CUBE_POSITION_ARRAY, None, None,
+                         4, 6)
+        self.attrib_order = [BaseShader.POS_ATTRIB_ID]
 
 class PlaneMesh(Mesh):
     PLANE_POSITION_ARRAY = np.array([[-1, 0, -1],

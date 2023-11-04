@@ -168,7 +168,7 @@ vec4 tonemap(vec4 color)
 
 void main(void)
 {
-	// STAGE 1 - compute base diffuse color
+	// compute base diffuse color
 	vec4 base_diff = get_base_diffuse();
 
 	if (u_material.unshaded)
@@ -177,8 +177,8 @@ void main(void)
 		return;
 	}
 
-	// STAGE 2 - compute shaded color
-	vec4 shaded_color = vec4(0.);
+	// compute shaded color
+	vec4 shaded_color = vec4(vec3(0.), 1.);
 	vec4 view_vec = u_camera_position - v_pos;
 
 	int c = (u_light_count < 4) ? u_light_count : 4;
@@ -187,10 +187,13 @@ void main(void)
 		shaded_color += color_from_light(view_vec, u_lights[i], base_diff);
 	}
 
-	// STAGE 3 - apply fog
+	// Add global ambient color
+	shaded_color += u_env.global_ambient * base_diff * .5;
+
+	// apply fog
 	float camera_dist = length(view_vec);
 	vec4 fogged_color = apply_fog(shaded_color, camera_dist);
 
-	// STAGE 4 - tonemap
+	// tonemap
 	gl_FragColor = tonemap(fogged_color);
 }

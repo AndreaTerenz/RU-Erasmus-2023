@@ -1,20 +1,8 @@
-struct Environment
-{
-	int tonemap_mode;
-};
-uniform Environment u_env;
-
-struct Material
-{
-	vec4 diffuse_color;
-	sampler2D diffuse_tex;
-};
-uniform Material u_material;
-
+uniform int u_tonemap_mode;
+uniform samplerCube u_cubemap;
 uniform float u_time;
 
-varying vec4 v_pos;
-varying vec2 v_uv;
+varying vec3 v_uv;
 
 vec3 aces(vec3 x) {
   const float a = 2.51;
@@ -50,28 +38,23 @@ vec3 uncharted2_filmic(vec3 v)
     vec3 white_scale = vec3(1.0f) / uncharted2_tonemap_partial(W);
     return curr * white_scale;
 }
-/*
+
 vec4 tonemap(vec4 color)
 {
 	vec3 col = color.rgb;
 
-	switch (u_env.tonemap_mode)
-	{
-		case 0:
-			return vec4(aces(col), 1.);
-		case 1:
-			return vec4(reinhard(col), 1.);
-		case 2:
-			return vec4(uncharted2_filmic(col), 1.);
-	}
+	if (u_tonemap_mode == 0)
+        return vec4(aces(col), 1.);
+	else if (u_tonemap_mode == 1)
+       return vec4(reinhard(col), 1.);
+	else if (u_tonemap_mode == 2)
+        return vec4(uncharted2_filmic(col), 1.);
 
 	return clamp(color, 0., 1.);
-}*/
+}
 
 void main(void)
 {
-    vec4 tex_color = texture(u_material.diffuse_tex, v_uv);
-	vec4 base_diff = u_material.diffuse_color * tex_color;
-
-	gl_FragColor = base_diff; // tonemap(base_diff);
+    vec4 tex_color = texture(u_cubemap, v_uv);
+	gl_FragColor = tonemap(tex_color);
 }

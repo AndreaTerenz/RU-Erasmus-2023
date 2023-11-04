@@ -8,7 +8,7 @@ from oven_engine_3D.utils.geometry import Vector3D, Vector2D
 
 class PlayerLight(Light):
     def __init__(self, app, player, color):
-        super().__init__(parent_app=app, position=player.origin, color=color, radius=0., intensity=.5)
+        super().__init__(parent_app=app, position=player.origin, color=color, radius=28., intensity=.5)
 
         self.player = player
 
