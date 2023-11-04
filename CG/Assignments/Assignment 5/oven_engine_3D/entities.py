@@ -82,11 +82,11 @@ class MeshEntity(Entity):
         self.mesh = mesh
 
     def draw(self):
-        self.mesh.draw(self.parent_app, shader=self.shader, model_matrix=self.model_matrix)
+        self.shader.setup_for_draw(app=self.parent_app, mesh=self.mesh, model_matrix=self.model_matrix)
+        self.mesh.draw()
 
     def _update(self, delta):
-        self.shader.use()
-        self.shader.set_model_matrix(self.model_matrix)
+        pass
 
     def handle_event(self, ev):
         pass

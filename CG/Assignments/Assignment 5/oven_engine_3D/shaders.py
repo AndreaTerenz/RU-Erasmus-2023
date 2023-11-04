@@ -22,13 +22,26 @@ def add_missing(dict1, dict2):
 class BaseShader(ABC):
     compiled_vert_shaders = {}
     compiled_frag_shaders = {}
+    
+    POS_ATTRIB_ID = 0
+    NORM_ATTRIB_ID = 1
+    UV_ATTRIB_ID = 2
 
     class ShaderAttribute:
-        def __init__(self, attrib_name: str, attrib_loc: int, attrib_elem_count: int, attrib_type: int):
-            self.name = attrib_name
-            self.loc = attrib_loc
-            self.elem_count = attrib_elem_count
-            self.type = attrib_type
+        def __init__(self, name: str, loc: int, elem_count: int, dtype, attrib_type: int):
+            self.name = name
+            self.loc = loc
+            self.elem_count = elem_count
+            self.data_type = dtype
+            self.attrib_type = attrib_type
+
+        @property
+        def elem_size(self):
+            return sizeof(self.data_type)
+
+        @property
+        def attrib_size(self):
+            return self.elem_count * self.elem_size
 
     def __init__(self, vert_shader_path, frag_shader_path, params=None):
 
@@ -39,6 +52,7 @@ class BaseShader(ABC):
 
         self.uniform_locations = {}
         self.attributes = {}
+        self.total_attrib_size = 0
 
         def_params = self.__class__.get_default_params()
         if params is None:
@@ -47,14 +61,17 @@ class BaseShader(ABC):
         self.params = params
         add_missing(self.params, def_params)
 
-    def add_attribute(self, attrib_name, attrib_elem_count, attrib_type):
-        if attrib_name in self.attributes:
+    def add_attribute(self, name, elem_count, dtype, atype):
+        if atype in self.attributes:
             return
 
-        attrib_loc = self.enable_attrib_array(attrib_name)
-        self.attributes[attrib_name] = BaseShader.ShaderAttribute(attrib_name, attrib_loc, attrib_elem_count, attrib_type)
+        loc = self.enable_attrib_array(name)
+        attr = BaseShader.ShaderAttribute(name, loc, elem_count, dtype, atype)
 
-        return attrib_loc
+        self.attributes[atype] = attr
+        self.total_attrib_size += attr.attrib_size
+
+        return loc
 
     @staticmethod
     @abstractmethod
@@ -125,22 +142,15 @@ class BaseShader(ABC):
         glActiveTexture(GL_TEXTURE0 + texture_slot)
         glBindTexture(GL_TEXTURE_2D, texture_id)
 
-    def link_attrib_vbo(self, vbo):
-        attrib_objects = [a for a in self.attributes.values()]
-
-        locations = [a.loc for a in attrib_objects]
-        values_per_attrib = [a.elem_count for a in attrib_objects]
-        attrib_types = [a.type for a in attrib_objects]
-
-        attrib_sizes = [sizeof(t) for t in attrib_types]
-        total_size = sum([s * v for s, v in zip(attrib_sizes, values_per_attrib)])
-
+    def link_attrib_vbo(self, vbo, ordering):
         glBindBuffer(GL_ARRAY_BUFFER, vbo)
 
         offset_size = 0
-        for idx in range(len(locations)):
-            glVertexAttribPointer(locations[idx], values_per_attrib[idx], GL_FLOAT, False, total_size, ctypes.c_void_p(offset_size))
-            offset_size += attrib_sizes[idx] * values_per_attrib[idx]
+        for atype in ordering:
+            a = self.attributes[atype]
+            glVertexAttribPointer(a.loc, a.elem_count, GL_FLOAT, False, self.total_attrib_size,
+                                  ctypes.c_void_p(offset_size))
+            offset_size += a.attrib_size
 
         glBindBuffer(GL_ARRAY_BUFFER, 0)
 
@@ -180,6 +190,10 @@ class BaseShader(ABC):
         except OpenGL.error.GLError:
             print(f"Failed to use shader - {self.info_log}")
             raise
+
+    @abstractmethod
+    def setup_for_draw(self, *args, **kwargs):
+        pass
 
     def get_uniform_loc(self, uniform_name):
         if uniform_name in self.uniform_locations:
@@ -250,7 +264,7 @@ class BaseShader(ABC):
         value = [int(v) for v in value]
         self.set_uniform_int(value, uniform_name)
 
-    def set_uniform_sampler2D(self, uniform_name, texture_slot = 0):
+    def set_uniform_sampler2D(self, texture_slot, uniform_name):
         loc = self.get_uniform_loc(uniform_name)
         glUniform1i(loc, texture_slot)
 
@@ -264,9 +278,9 @@ class MeshShader(BaseShader):
                          vert_shader_path=MeshShader.DEFAULT_VERTEX,
                          frag_shader_path=MeshShader.DEFAULT_FRAG)
 
-        self.add_attribute("a_position", 3, GLfloat)
-        self.add_attribute("a_normal", 3, GLfloat)
-        self.add_attribute("a_uv", 2, GLfloat)
+        self.add_attribute("a_position", 3, GLfloat, BaseShader.POS_ATTRIB_ID)
+        self.add_attribute("a_normal", 3, GLfloat, BaseShader.NORM_ATTRIB_ID)
+        self.add_attribute("a_uv", 2, GLfloat, BaseShader.UV_ATTRIB_ID)
 
         self.ignore_camera_pos = ignore_camera_pos
 
@@ -309,6 +323,23 @@ class MeshShader(BaseShader):
                 "receive_ambient" : True
             }
 
+    def setup_for_draw(self, *args, **kwargs):
+        mesh = kwargs["mesh"]
+        app = kwargs["app"]
+        model_matrix = kwargs["model_matrix"]
+
+        self.use()
+        self.link_attrib_vbo(mesh.vbo, mesh.attrib_order)
+        self.set_model_matrix(model_matrix)
+        self.activate_diffuse_text()
+
+        self.set_light_uniforms(app.lights)
+        self.set_camera_uniforms(app.camera)
+        self.set_environment_uniforms(app.environment)
+
+        time = np.float32(app.ticks / 1000.)
+        self.set_time(time)
+
     def activate_diffuse_text(self):
         BaseShader.activate_texture(self.diff_tex_id, texture_slot = 0)
 
@@ -329,7 +360,6 @@ class MeshShader(BaseShader):
         v = camera.view_matrix.values
 
         if self.ignore_camera_pos:
-
             v = np.array(v, dtype="float32").reshape(4,4)
             v[:3, 3] = 0
             v = v.flatten()
@@ -367,7 +397,7 @@ class MeshShader(BaseShader):
 
     def set_diffuse_texture(self, diff_tex_id):
         self.set_uniform_bool((diff_tex_id > 0), "u_material.has_texture")
-        self.set_uniform_sampler2D("u_material.diffuse_tex", 0)
+        self.set_uniform_sampler2D(0, "u_material.diffuse_tex")
 
     def set_time(self, value: float):
         self.set_uniform_float(value, "u_time")
@@ -382,9 +412,9 @@ class SkyboxShader(BaseShader):
                          vert_shader_path=SkyboxShader.SKY_VERTEX,
                          frag_shader_path=SkyboxShader.SKY_FRAG)
 
-        self.add_attribute("a_position", 3, GLfloat)
-        self.add_attribute("a_normal", 3, GLfloat)
-        self.add_attribute("a_uv", 2, GLfloat)
+        self.add_attribute("a_position", 3, GLfloat, BaseShader.POS_ATTRIB_ID)
+        self.add_attribute("a_normal", 3, GLfloat, BaseShader.NORM_ATTRIB_ID)
+        self.add_attribute("a_uv", 2, GLfloat, BaseShader.UV_ATTRIB_ID)
 
         self.diff_tex_id = -1
         if type(diffuse_texture) is int and diffuse_texture >= 0:
@@ -392,7 +422,25 @@ class SkyboxShader(BaseShader):
         elif type(diffuse_texture) is str and diffuse_texture != "":
             self.diff_tex_id = TexturesManager.load_texture(diffuse_texture, filtering=GL_LINEAR)
 
+        self.set_uniform_sampler2D(0, "u_material.diffuse_tex")
+
         print()
+
+    def setup_for_draw(self, *args, **kwargs):
+        mesh = kwargs["mesh"]
+        app = kwargs["app"]
+        model_matrix = kwargs["model_matrix"]
+
+        self.use()
+        self.link_attrib_vbo(mesh.vbo, mesh.attrib_order)
+        self.set_model_matrix(model_matrix)
+        self.activate_diffuse_text()
+
+        self.set_camera_uniforms(app.camera)
+        self.set_environment_uniforms(app.environment)
+
+        time = np.float32(app.ticks / 1000.)
+        self.set_time(time)
 
     def set_material_uniforms(self, params = None):
         if params is None:
@@ -402,10 +450,25 @@ class SkyboxShader(BaseShader):
 
     def set_camera_uniforms(self, camera: 'Camera'):
         self.set_uniform_matrix(camera.projection_matrix.values, "u_projection_matrix")
-        self.set_uniform_matrix(camera.view_matrix.values, "u_view_matrix")
+
+        v = camera.view_matrix.values
+        v = np.array(v, dtype="float32").reshape(4, 4)
+        v[:3, 3] = 0
+        v = v.flatten()
+
+        self.set_uniform_matrix(v, "u_view_matrix")
 
     def set_environment_uniforms(self, env: Environment):
         self.set_uniform_int(env.tonemap.value, "u_env.tonemap_mode")
+
+    def set_model_matrix(self, matrix):
+        self.set_uniform_matrix(matrix.values, "u_model_matrix")
+
+    def activate_diffuse_text(self):
+        BaseShader.activate_texture(self.diff_tex_id, texture_slot = 0)
+
+    def set_time(self, value: float):
+        self.set_uniform_float(value, "u_time")
 
     @staticmethod
     def get_default_params():

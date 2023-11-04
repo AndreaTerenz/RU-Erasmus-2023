@@ -8,12 +8,12 @@ import numpy as np
 import pywavefront as pwf
 from OpenGL.GL import *
 
+from oven_engine_3D.shaders import BaseShader
 from oven_engine_3D.utils.geometry import Vector3D
-from oven_engine_3D.utils.matrices import ModelMatrix
 
 
 class Mesh(ABC):
-    def __init__(self, positions, normals, uvs, verts_per_face, face_count):
+    def __init__(self, positions, normals, uvs, verts_per_face, face_count, attrib_order = None):
         self.__vbo = Mesh.vbo_from_data(positions, normals, uvs)
 
         self.vertex_positions = positions
@@ -21,6 +21,9 @@ class Mesh(ABC):
         self.vertex_uvs = uvs
         self.verts_per_face = verts_per_face
         self.face_count = face_count
+
+        self.attrib_order = attrib_order if attrib_order is not None else \
+            [BaseShader.POS_ATTRIB_ID, BaseShader.NORM_ATTRIB_ID, BaseShader.UV_ATTRIB_ID]
 
     @staticmethod
     def vbo_from_data(pos, nor, uv):
@@ -37,25 +40,7 @@ class Mesh(ABC):
 
         return vbo_id
 
-    def draw(self, app: 'BaseApp3D', shader: "MeshShader",
-             offset: Vector3D = Vector3D.ZERO, scale: Vector3D = Vector3D.ONE, rotation: Vector3D = Vector3D.ZERO,
-             model_matrix=None, camera_override=None, lights_override=None, env_override=None):
-        if model_matrix is None:
-            model_matrix = ModelMatrix.from_transformations(offset, rotation, scale)
-
-        shader.use()
-
-        shader.link_attrib_vbo(self.vbo)
-        shader.set_model_matrix(model_matrix)
-        shader.activate_diffuse_text()
-
-        shader.set_light_uniforms(app.lights if lights_override is None else lights_override)
-        shader.set_camera_uniforms(app.camera if camera_override is None else camera_override)
-        shader.set_environment_uniforms(app.environment if env_override is None else env_override)
-
-        time = np.float32(app.ticks / 1000.)
-        shader.set_time(time)
-
+    def draw(self):
         glBindBuffer(GL_ARRAY_BUFFER, self.vbo)
 
         for k in range(self.face_count):

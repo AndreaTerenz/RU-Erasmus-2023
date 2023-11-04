@@ -50,7 +50,7 @@ vec3 uncharted2_filmic(vec3 v)
     vec3 white_scale = vec3(1.0f) / uncharted2_tonemap_partial(W);
     return curr * white_scale;
 }
-
+/*
 vec4 tonemap(vec4 color)
 {
 	vec3 col = color.rgb;
@@ -66,12 +66,12 @@ vec4 tonemap(vec4 color)
 	}
 
 	return clamp(color, 0., 1.);
-}
+}*/
 
 void main(void)
 {
     vec4 tex_color = texture(u_material.diffuse_tex, v_uv);
 	vec4 base_diff = u_material.diffuse_color * tex_color;
 
-	gl_FragColor = tonemap(base_diff);
+	gl_FragColor = base_diff; // tonemap(base_diff);
 }
