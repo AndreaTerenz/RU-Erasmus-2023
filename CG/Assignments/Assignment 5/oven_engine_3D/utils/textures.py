@@ -1,5 +1,6 @@
 import os
 
+import pygame as pg
 import pygame.image as img
 from OpenGL.GL import *
 from OpenGL.constant import IntConstant
@@ -67,7 +68,7 @@ class TexturesManager:
                      py : str = MISSING_TEXTURE, ny : str = MISSING_TEXTURE,
                      pz : str = MISSING_TEXTURE, nz : str = MISSING_TEXTURE,
                      folder : str = None):
-        print(f"Loading cubemap...")
+        print(f"Creating cubemap...")
 
         paths = [px, nx, py, ny, pz, nz]
 
@@ -77,19 +78,35 @@ class TexturesManager:
             print("done (cubemap already loaded)")
             return TexturesManager.cubemaps[cubemap_total_path]
 
+        all_found = True
+        surfaces = [None] * 6
         faces_data = [""] * 6
         faces_size = [Vector2D.ZERO] * 6
         target_size = Vector2D.ZERO
         for idx in range(len(paths)):
+            print(f"\tLoading face {idx} from {paths[idx]}...", end="")
             p = paths[idx]
             if folder is not None:
                 p = os.path.join(folder, p)
 
-            assert os.path.exists(p), f"Cubemap face '{p}' not found!"
+            found = os.path.exists(p)
+            if not found:
+                print(f"failed (file does not exist)")
+                p = MISSING_TEXTURE
+                all_found = False
+                if target_size == Vector2D.ZERO:
+                    target_size = Vector2D.ONE * 512
+            else:
+                print("done") # I know, it actually happens next line, dont worry about it....
 
-            surf = img.load(p)
-            faces_data[idx] = (img.tostring(surf, "RGB", False))
-            faces_size[idx] = Vector2D(surf.get_size())
+            surfaces[idx] = img.load(p)
+
+        for idx, s in enumerate(surfaces):
+            if faces_size[idx] != target_size and not all_found:
+                s = pg.transform.scale(s, tuple(target_size))
+
+            faces_data[idx] = (img.tostring(s, "RGB", False))
+            faces_size[idx] = Vector2D(s.get_size())
 
         cmapID = glGenTextures(1)
         glBindTexture(GL_TEXTURE_CUBE_MAP, cmapID)
@@ -112,7 +129,10 @@ class TexturesManager:
         if cmapID != -1:
             TexturesManager.cubemaps[cubemap_total_path] = cmapID
 
-        print("done")
+        if all_found:
+            print("done")
+        else:
+            print("done (failed to load some faces)")
 
         return cmapID
 

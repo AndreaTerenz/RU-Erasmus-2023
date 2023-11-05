@@ -48,7 +48,7 @@ class Assignment5(BaseApp3D):
         # self.objects.append(MeshEntity(mesh="res/models/monke.obj", parent_app=self, shader=mat5))
         """
 
-        sky_cubemap = TexturesManager.load_cubemap(px="px.jpg", nx="nx.jpg", py="py.jpg", ny="ny.jpg", pz="pz.jpg", nz="nz.jpg",
+        sky_cubemap = TexturesManager.load_cubemap(px="px.jpg", nx="s.jpg", py="py.jpg", ny="ny.jpg", pz="pz.jpg", nz="nz.jpg",
                                                    folder="res\\textures\\skyes\\lake")
 
         self.skybox = Skybox(parent_app=self, cubemap_text=sky_cubemap)
