@@ -7,7 +7,6 @@ Requires Python 3.11 or higher
 - [x] ~~ACES Tonemapping~~
   - [x] ~~select [multiple tonemapping operators](https://64.github.io/tonemapping)~~
 - [x] ~~Fog~~
-- [ ] Screenshot hotkey
 - [x] ~~[Skybox](https://learnopengl.com/Advanced-OpenGL/Cubemaps)~~
   - [x] ~~Split shader back into "BaseShader" and "MeshShader"~~ (to make the SkyShader a separate subclass)
   - [ ] Compute global ambient color from skybox
@@ -24,6 +23,9 @@ Requires Python 3.11 or higher
 - [ ] Light types
   - [ ] Directional
   - [ ] Spotlight (maybe...)
+- [ ] More textures in shader
+  - [x] ~~Specular map~~
+  - [ ] Normal map
 - [ ] Mesh Loading
   - [x] ~~Mesh are loaded~~
   - [ ] Parse vertex format and act accordingly

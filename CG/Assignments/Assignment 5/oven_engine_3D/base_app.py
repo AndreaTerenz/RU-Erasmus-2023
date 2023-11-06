@@ -1,6 +1,7 @@
 from pygame.locals import *
 
 from oven_engine_3D.camera import *
+from oven_engine_3D.entities import Skybox
 from oven_engine_3D.shaders import *
 from oven_engine_3D.utils.geometry import Vector2D
 
@@ -14,16 +15,18 @@ class BaseApp3D(ABC):
                  ambient_color = None,
                  update_camera = True,
                  face_culling = True,
-                 environment : Environment = None
+                 environment : Environment = None,
+                 sky_textures = None,
                  ):
 
         pg.init()
 
+        self.screen = None
         if fullscreen or win_size == Vector2D.ZERO:
-            screen = pg.display.set_mode((0,0), pg.OPENGL|pg.DOUBLEBUF|pg.FULLSCREEN)
-            self.win_size = Vector2D(screen.get_size())
+            self.screen = pg.display.set_mode((0,0), pg.OPENGL|pg.DOUBLEBUF|pg.FULLSCREEN)
+            self.win_size = Vector2D(self.screen.get_size())
         else:
-            pg.display.set_mode(tuple(win_size), pg.OPENGL|pg.DOUBLEBUF)
+            self.screen = pg.display.set_mode(tuple(win_size), pg.OPENGL|pg.DOUBLEBUF)
             self.win_size = win_size
             pg.display.set_caption(win_title)
 
@@ -68,6 +71,10 @@ class BaseApp3D(ABC):
 
         self.environment = environment
 
+        self.skybox = None
+        if sky_textures is not None and type(sky_textures) is dict:
+            cm = TexturesManager.load_cubemap(**sky_textures)
+            self.skybox = Skybox(parent_app=self, cubemap_text=cm)
 
     def _update(self):
         delta = self.clock.tick(self.target_fps) / 1000.0
@@ -99,6 +106,9 @@ class BaseApp3D(ABC):
         for obj in self.objects:
             if hasattr(obj, 'draw'):
                 obj.draw()
+
+        if self.skybox is not None:
+            self.skybox.draw()
 
         pg.display.flip()
 

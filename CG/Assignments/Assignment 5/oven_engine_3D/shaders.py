@@ -1,3 +1,4 @@
+import math
 import os.path
 from abc import abstractmethod, ABC
 from typing import Collection
@@ -7,6 +8,7 @@ import numpy as np
 from OpenGL.GL import *
 from OpenGL.GLU import *
 from OpenGL.error import GLError
+from icecream import ic
 from pygame import Color
 
 from oven_engine_3D.environment import Environment
@@ -15,6 +17,8 @@ from oven_engine_3D.utils.misc import is_collection
 from oven_engine_3D.utils.textures import TexturesManager
 
 DEFAULT_SHADER_DIR = "shaders"
+
+ic.disable()
 
 def add_missing(dict1, dict2):
     dict1.update({key:value for key,value in dict2.items() if not key in dict1})
@@ -53,6 +57,7 @@ class BaseShader(ABC):
         self.uniform_locations = {}
         self.attributes = {}
         self.total_attrib_size = 0
+        self.textures = {}
 
         def_params = self.__class__.get_default_params()
         if params is None:
@@ -132,14 +137,6 @@ class BaseShader(ABC):
         print("done")
 
         return shader_id
-
-    @staticmethod
-    def activate_texture(texture_id = -1, texture_slot = 0, texture_type = GL_TEXTURE_2D):
-        if texture_id <= 0:
-            return
-
-        glActiveTexture(GL_TEXTURE0 + texture_slot)
-        glBindTexture(texture_type, texture_id)
 
     def link_attrib_vbo(self, vbo, ordering):
         glBindBuffer(GL_ARRAY_BUFFER, vbo)
@@ -263,15 +260,41 @@ class BaseShader(ABC):
         value = [int(v) for v in value]
         self.set_uniform_int(value, uniform_name)
 
+    def set_texture(self, texture_slot, texture_id, uniform_name, tex_flag_uniform_name="", texture_type = GL_TEXTURE_2D):
+        self.textures[texture_slot] = {
+            "id": texture_id,
+            "type": texture_type
+        }
+        self.set_uniform_sampler2D(texture_slot, uniform_name)
+
+        if tex_flag_uniform_name != "":
+            self.set_uniform_bool(texture_id > 0, tex_flag_uniform_name)
+
     def set_uniform_sampler2D(self, texture_slot, uniform_name):
         loc = self.get_uniform_loc(uniform_name)
         glUniform1i(loc, texture_slot)
+
+    def toggle_textures(self, bind = True):
+        for idx, tex_data in self.textures.items():
+            if tex_data["id"] <= 0:
+                continue
+
+            glActiveTexture(GL_TEXTURE0 + ic(idx))
+            glBindTexture(ic(tex_data["type"]), ic(tex_data["id"] if bind else 0))
+
 
 class MeshShader(BaseShader):
     DEFAULT_VERTEX = os.path.join(DEFAULT_SHADER_DIR, "mesh.vert")
     DEFAULT_FRAG =  os.path.join(DEFAULT_SHADER_DIR, "mesh.frag")
 
-    def __init__(self, diffuse_texture : [int|str] = "", params=None, ignore_camera_pos=False):
+    def __init__(self, diffuse_texture : [int|str] = "", specular_texture : [int|str] = "", params=None, ignore_camera_pos=False):
+        def load_texture_from_id(input_id: [int|str]):
+            if type(input_id) is int and input_id >= 0:
+                return input_id
+            if type(input_id) is str and input_id != "":
+                return TexturesManager.load_texture(input_id, filtering=GL_LINEAR)
+            return 0
+
 
         super().__init__(params=params,
                          vert_shader_path=MeshShader.DEFAULT_VERTEX,
@@ -283,18 +306,14 @@ class MeshShader(BaseShader):
 
         self.ignore_camera_pos = ignore_camera_pos
 
-        self.diff_tex_id = -1
-        if type(diffuse_texture) is int and diffuse_texture >= 0:
-            self.diff_tex_id = diffuse_texture
-        elif type(diffuse_texture) is str and diffuse_texture != "":
-            self.diff_tex_id = TexturesManager.load_texture(diffuse_texture, filtering=GL_LINEAR)
-
         self.use()
-        self.set_diffuse_texture(self.diff_tex_id)
+        self.diff_tex_id = load_texture_from_id(diffuse_texture)
+        self.set_diffuse_texture()
+        self.spec_tex_id = load_texture_from_id(specular_texture)
+        self.set_specular_texture()
         self.set_material_uniforms()
 
         print()
-
 
     def duplicate(self):
         return self.variation()
@@ -309,6 +328,7 @@ class MeshShader(BaseShader):
         return MeshShader(
             params=p,
             diffuse_texture=kwargs.get("diffuse_texture", self.diff_tex_id),
+            specular_texture=kwargs.get("specular_texture", self.spec_tex_id),
         )
 
     @staticmethod
@@ -330,7 +350,7 @@ class MeshShader(BaseShader):
         self.use()
         self.link_attrib_vbo(mesh.vbo, mesh.attrib_order)
         self.set_model_matrix(model_matrix)
-        self.activate_diffuse_text()
+        self.toggle_textures()
 
         self.set_light_uniforms(app.lights)
         self.set_camera_uniforms(app.camera)
@@ -340,9 +360,7 @@ class MeshShader(BaseShader):
         self.set_time(time)
 
         mesh.draw()
-
-    def activate_diffuse_text(self):
-        BaseShader.activate_texture(self.diff_tex_id, texture_slot = 0)
+        self.toggle_textures(bind=False)
 
     def set_material_uniforms(self, params = None):
         if params is None:
@@ -387,9 +405,13 @@ class MeshShader(BaseShader):
     def set_model_matrix(self, matrix):
         self.set_uniform_matrix(matrix.values, "u_model_matrix")
 
-    def set_diffuse_texture(self, diff_tex_id):
-        self.set_uniform_bool((diff_tex_id > 0), "u_material.has_texture")
-        self.set_uniform_sampler2D(0, "u_material.diffuse_tex")
+    def set_diffuse_texture(self):
+        self.set_texture(0, self.diff_tex_id,
+                         "u_material.diffuse_tex", tex_flag_uniform_name="u_material.use_diff_texture")
+
+    def set_specular_texture(self):
+        self.set_texture(1, self.spec_tex_id,
+                         "u_material.specular_tex", tex_flag_uniform_name="u_material.use_spec_texture")
 
     def set_time(self, value: float):
         self.set_uniform_float(value, "u_time")
@@ -398,11 +420,11 @@ class SkyboxShader(BaseShader):
     SKY_VERTEX = os.path.join(DEFAULT_SHADER_DIR, "sky.vert")
     SKY_FRAG = os.path.join(DEFAULT_SHADER_DIR, "sky.frag")
 
-    def __init__(self, cubemap_id : int):
+    def __init__(self, cubemap_id : int, params=None):
         # Ugly way to shut up circular import error
         from oven_engine_3D.meshes import SkyboxMesh
 
-        super().__init__(params=None,
+        super().__init__(params=params,
                          vert_shader_path=SkyboxShader.SKY_VERTEX,
                          frag_shader_path=SkyboxShader.SKY_FRAG)
 
@@ -413,7 +435,8 @@ class SkyboxShader(BaseShader):
         self.cubemap_id = cubemap_id
 
         self.use()
-        self.set_uniform_sampler2D(0, "u_cubemap")
+        self.set_rotation(self.params["rotation"])
+        self.set_cubemap()
 
         print()
 
@@ -422,22 +445,22 @@ class SkyboxShader(BaseShader):
 
         self.use()
         self.link_attrib_vbo(self.sky_mesh.vbo, self.sky_mesh.attrib_order)
-
-        BaseShader.activate_texture(self.cubemap_id, texture_type = GL_TEXTURE_CUBE_MAP)
-
         self.set_camera_uniforms(app.camera)
         self.set_uniform_int(app.environment.tonemap.value, "u_tonemap_mode")
+        self.toggle_textures()
 
         time = np.float32(app.ticks / 1000.)
         self.set_time(time)
 
         self.sky_mesh.draw()
+        self.toggle_textures(bind=False)
 
-    def set_material_uniforms(self, params = None):
-        if params is None:
-            params = self.params
+    def set_rotation(self, angle):
+        self.set_uniform_float(angle, "u_rotation")
 
-        self.set_uniform_color(params["diffuse_color"], "u_material.diffuse_color")
+    def set_cubemap(self):
+        self.set_texture(0, self.cubemap_id,
+                         "u_material.u_cubemap", texture_type=GL_TEXTURE_CUBE_MAP)
 
     def set_camera_uniforms(self, camera: 'Camera'):
         self.set_uniform_matrix(camera.projection_matrix.values, "u_projection_matrix")
@@ -460,7 +483,9 @@ class SkyboxShader(BaseShader):
 
     @staticmethod
     def get_default_params():
-        return {}
+        return {
+            "rotation": math.tau/4.
+        }
 
 
 

@@ -71,6 +71,8 @@ class TexturesManager:
         print(f"Creating cubemap...")
 
         paths = [px, nx, py, ny, pz, nz]
+        if folder is not None:
+            paths = [os.path.join(folder, p) for p in paths]
 
         cubemap_total_path = "#".join(paths)
 
@@ -80,30 +82,29 @@ class TexturesManager:
 
         all_found = True
         surfaces = [None] * 6
-        faces_data = [""] * 6
-        faces_size = [Vector2D.ZERO] * 6
-        target_size = Vector2D.ZERO
+
         for idx in range(len(paths)):
             print(f"\tLoading face {idx} from {paths[idx]}...", end="")
             p = paths[idx]
-            if folder is not None:
-                p = os.path.join(folder, p)
 
             found = os.path.exists(p)
             if not found:
                 print(f"failed (file does not exist)")
                 p = MISSING_TEXTURE
                 all_found = False
-                if target_size == Vector2D.ZERO:
-                    target_size = Vector2D.ONE * 512
             else:
                 print("done") # I know, it actually happens next line, dont worry about it....
 
             surfaces[idx] = img.load(p)
 
+        faces_data = [""] * 6
+        faces_size = [Vector2D.ZERO] * 6
+
         for idx, s in enumerate(surfaces):
-            if faces_size[idx] != target_size and not all_found:
-                s = pg.transform.scale(s, tuple(target_size))
+            if not all_found:
+                # If we haven't found all faces, then at least one is the missing texture,
+                # which is 512x512, so we need to scale all the faces to that size
+                s = pg.transform.scale(s, (512, 512))
 
             faces_data[idx] = (img.tostring(s, "RGB", False))
             faces_size[idx] = Vector2D(s.get_size())

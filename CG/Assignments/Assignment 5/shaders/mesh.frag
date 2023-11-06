@@ -26,11 +26,12 @@ struct Material
 	vec4 diffuse_color,
 		 specular_color,
 		 ambient_color;
-	sampler2D diffuse_tex;
+	sampler2D diffuse_tex, specular_tex;
 	float shininess;
 	bool receive_ambient,
 		 unshaded,
-		 has_texture;
+		 use_diff_texture,
+		 use_spec_texture;
 };
 uniform Material u_material;
 
@@ -45,7 +46,7 @@ varying vec2 v_uv;
 
 vec4 get_base_diffuse()
 {
-	vec4 tex_color = (u_material.has_texture) ? texture(u_material.diffuse_tex, v_uv) : vec4(1.);
+	vec4 tex_color = (u_material.use_diff_texture) ? texture(u_material.diffuse_tex, v_uv) : vec4(1.);
 	return u_material.diffuse_color * tex_color;
 }
 
@@ -54,7 +55,7 @@ float rand(vec2 co)
 	return fract(sin(dot(co.xy, vec2(12.9898, 78.233))) * 43758.5453);
 }
 
-vec4 color_from_light(vec4 view_vec, Light light, vec4 base_diffuse)
+vec4 color_from_light(vec4 view_vec, Light light, vec4 base_diffuse, float spec_tex_value)
 {
 	float d = distance(light.position, v_pos);
 
@@ -70,7 +71,7 @@ vec4 color_from_light(vec4 view_vec, Light light, vec4 base_diffuse)
 
 	vec4 h = (view_vec + s_vec) * .5;
 	float phong = max(0.0, dot(h, v_norm) / (length(h) * length(v_norm)));
-	vec4 specular = light.specular * light.intensity * u_material.specular_color * pow(phong, u_material.shininess);
+	vec4 specular = light.specular * light.intensity * u_material.specular_color * pow(phong, u_material.shininess) * spec_tex_value;
 
 	float dist_factor = 1.;
 	if (light.radius > 0.)
@@ -178,13 +179,14 @@ void main(void)
 	}
 
 	// compute shaded color
-	vec4 shaded_color = vec4(vec3(0.), 1.);
 	vec4 view_vec = u_camera_position - v_pos;
+	float spec_tex_value = u_material.use_spec_texture ? texture(u_material.specular_tex, v_uv).r : 1.;
+	vec4 shaded_color = vec4(vec3(0.), 1.);
 
 	int c = (u_light_count < 4) ? u_light_count : 4;
 	for (int i = 0; i < c; i++)
 	{
-		shaded_color += color_from_light(view_vec, u_lights[i], base_diff);
+		shaded_color += color_from_light(view_vec, u_lights[i], base_diff, spec_tex_value);
 	}
 
 	// Add global ambient color
