@@ -1,7 +1,7 @@
 from pygame.locals import *
 
 from oven_engine_3D.camera import *
-from oven_engine_3D.entities import Skybox
+from oven_engine_3D.entities import Skybox, DrawnEntity
 from oven_engine_3D.shaders import *
 from oven_engine_3D.utils.geometry import Vector2D
 
@@ -62,7 +62,6 @@ class BaseApp3D(ABC):
         ]
         self.keys_states = {key: False for key in self.keys}
 
-        self.objects = []
         self.avg_fps = 0.
         self.target_fps = 60.
 
@@ -76,6 +75,21 @@ class BaseApp3D(ABC):
             cm = TexturesManager.load_cubemap(**sky_textures)
             self.skybox = Skybox(parent_app=self, cubemap_text=cm)
 
+        self.entities = []
+        self.opaque = []
+        self.transparent = []
+
+    def add_entity(self, ent: Entity):
+        self.entities.append(ent)
+
+        if not isinstance(ent, DrawnEntity):
+            return
+
+        if ent.shader.transparent:
+            self.transparent.append(ent)
+        else:
+            self.opaque.append(ent)
+
     def _update(self):
         delta = self.clock.tick(self.target_fps) / 1000.0
         self.ticks += 1
@@ -83,8 +97,8 @@ class BaseApp3D(ABC):
 
         self.update(delta)
 
-        for obj in self.objects:
-            obj.update(delta)
+        for ent in self.entities:
+            ent.update(delta)
 
     @abstractmethod
     def update(self, delta):
@@ -92,23 +106,29 @@ class BaseApp3D(ABC):
 
     def _display(self):
         glEnable(GL_DEPTH_TEST)
+        glEnable(GL_BLEND)
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 
         if self.face_culling:
             glEnable(GL_CULL_FACE)
+            glCullFace(GL_FRONT)
         else:
             glDisable(GL_CULL_FACE)
 
-        glCullFace(GL_FRONT)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
         self.display()
 
-        for obj in self.objects:
-            if hasattr(obj, 'draw'):
-                obj.draw()
+        for ent in self.opaque:
+            ent.draw()
 
         if self.skybox is not None:
             self.skybox.draw()
+
+        # Sort transparent entities by distance to camera
+        self.transparent.sort(key=lambda e: (e.origin - self.camera.origin).length_sq, reverse=True)
+        for ent in self.transparent:
+            ent.draw()
 
         pg.display.flip()
 
@@ -146,8 +166,8 @@ class BaseApp3D(ABC):
             if self.handle_event(event):
                 return True
 
-            for obj in self.objects:
-                if obj.handle_event(event):
+            for ent in self.entities:
+                if ent.handle_event(event):
                     return True
 
         return False

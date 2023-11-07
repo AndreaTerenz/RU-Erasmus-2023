@@ -1,3 +1,6 @@
+#define BLACK vec4(0., 0., 0., 1.)
+#define WHITE vec4(1.)
+
 struct Environment
 {
 	vec4 global_ambient;
@@ -28,6 +31,8 @@ struct Material
 		 ambient_color;
 	sampler2D diffuse_tex, specular_tex;
 	float shininess;
+	float alpha_cutoff;
+	bool alpha_discard;
 	bool receive_ambient,
 		 unshaded,
 		 use_diff_texture,
@@ -46,7 +51,7 @@ varying vec2 v_uv;
 
 vec4 get_base_diffuse()
 {
-	vec4 tex_color = (u_material.use_diff_texture) ? texture(u_material.diffuse_tex, v_uv) : vec4(1.);
+	vec4 tex_color = (u_material.use_diff_texture) ? texture(u_material.diffuse_tex, v_uv) : WHITE;
 	return u_material.diffuse_color * tex_color;
 }
 
@@ -60,11 +65,11 @@ vec4 color_from_light(vec4 view_vec, Light light, vec4 base_diffuse, float spec_
 	float d = distance(light.position, v_pos);
 
 	if (light.radius > 0. && d > light.radius)
-		return vec4(0., 0., 0., 1.);
+		return BLACK;
 
 	vec4 s_vec = light.position - v_pos;
 
-	vec4 ambient = u_material.receive_ambient ? (light.ambient * u_material.ambient_color) : vec4(0., 0., 0., 1.);
+	vec4 ambient = u_material.receive_ambient ? (light.ambient * u_material.ambient_color) : BLACK;
 
 	float lambert = max(0.0, dot(s_vec, v_norm) / (length(s_vec) * length(v_norm)));
 	vec4 diffuse = light.diffuse * light.intensity * base_diffuse * lambert;
@@ -157,11 +162,11 @@ vec4 tonemap(vec4 color)
 	switch (u_env.tonemap_mode)
 	{
 		case 0:
-			return vec4(aces(col), 1.);
+			return vec4(aces(col), color.a);
 		case 1:
-			return vec4(reinhard(col), 1.);
+			return vec4(reinhard(col), color.a);
 		case 2:
-			return vec4(uncharted2_filmic(col), 1.);
+			return vec4(uncharted2_filmic(col), color.a);
 	}
 
 	return clamp(color, 0., 1.);
@@ -172,16 +177,21 @@ void main(void)
 	// compute base diffuse color
 	vec4 base_diff = get_base_diffuse();
 
+	// discard pixel if alpha is too low
+	if (u_material.alpha_discard && base_diff.a < u_material.alpha_cutoff)
+		discard;
+
 	if (u_material.unshaded)
 	{
 		gl_FragColor = base_diff;
+		gl_FragColor.a = base_diff.a;
 		return;
 	}
 
 	// compute shaded color
 	vec4 view_vec = u_camera_position - v_pos;
 	float spec_tex_value = u_material.use_spec_texture ? texture(u_material.specular_tex, v_uv).r : 1.;
-	vec4 shaded_color = vec4(vec3(0.), 1.);
+	vec4 shaded_color = BLACK;
 
 	int c = (u_light_count < 4) ? u_light_count : 4;
 	for (int i = 0; i < c; i++)
@@ -198,4 +208,5 @@ void main(void)
 
 	// tonemap
 	gl_FragColor = tonemap(fogged_color);
+	gl_FragColor.a = base_diff.a;
 }

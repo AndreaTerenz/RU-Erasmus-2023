@@ -8,7 +8,6 @@ import numpy as np
 from OpenGL.GL import *
 from OpenGL.GLU import *
 from OpenGL.error import GLError
-from icecream import ic
 from pygame import Color
 
 from oven_engine_3D.environment import Environment
@@ -17,8 +16,6 @@ from oven_engine_3D.utils.misc import is_collection
 from oven_engine_3D.utils.textures import TexturesManager
 
 DEFAULT_SHADER_DIR = "shaders"
-
-ic.disable()
 
 def add_missing(dict1, dict2):
     dict1.update({key:value for key,value in dict2.items() if not key in dict1})
@@ -47,10 +44,14 @@ class BaseShader(ABC):
         def attrib_size(self):
             return self.elem_count * self.elem_size
 
-    def __init__(self, vert_shader_path, frag_shader_path, params=None):
+    def __init__(self, vert_shader_path, frag_shader_path, params=None, transparent=False):
 
         self.vert_shader_path = vert_shader_path
         self.frag_shader_path = frag_shader_path
+
+        self.transparent = transparent
+        if params is not None and "alpha_discard" in params:
+            self.transparent = transparent and not params["alpha_discard"]
 
         self.renderingProgramID = MeshShader.get_shader_program(self.vert_shader_path, self.frag_shader_path)
 
@@ -188,8 +189,16 @@ class BaseShader(ABC):
             raise
 
     @abstractmethod
-    def draw(self, *args, **kwargs):
+    def _ondraw(self, *args, **kwargs):
         pass
+
+    def draw(self, *args, **kwargs):
+        self.use()
+        self.toggle_textures()
+
+        self._ondraw(*args, **kwargs)
+
+        self.toggle_textures(bind=False)
 
     def get_uniform_loc(self, uniform_name):
         if uniform_name in self.uniform_locations:
@@ -279,15 +288,15 @@ class BaseShader(ABC):
             if tex_data["id"] <= 0:
                 continue
 
-            glActiveTexture(GL_TEXTURE0 + ic(idx))
-            glBindTexture(ic(tex_data["type"]), ic(tex_data["id"] if bind else 0))
+            glActiveTexture(GL_TEXTURE0 + idx)
+            glBindTexture(tex_data["type"], tex_data["id"] if bind else 0)
 
 
 class MeshShader(BaseShader):
     DEFAULT_VERTEX = os.path.join(DEFAULT_SHADER_DIR, "mesh.vert")
     DEFAULT_FRAG =  os.path.join(DEFAULT_SHADER_DIR, "mesh.frag")
 
-    def __init__(self, diffuse_texture : [int|str] = "", specular_texture : [int|str] = "", params=None, ignore_camera_pos=False):
+    def __init__(self, diffuse_texture : [int|str] = "", specular_texture : [int|str] = "", params=None, ignore_camera_pos=False, transparent=False):
         def load_texture_from_id(input_id: [int|str]):
             if type(input_id) is int and input_id >= 0:
                 return input_id
@@ -297,6 +306,7 @@ class MeshShader(BaseShader):
 
 
         super().__init__(params=params,
+                         transparent=transparent,
                          vert_shader_path=MeshShader.DEFAULT_VERTEX,
                          frag_shader_path=MeshShader.DEFAULT_FRAG)
 
@@ -339,18 +349,18 @@ class MeshShader(BaseShader):
                 "ambient_color" : (.1, .1, .1),
                 "shininess" : 5.,
                 "unshaded" : False,
-                "receive_ambient" : True
+                "receive_ambient" : True,
+                "alpha_discard" : True,
+                "alpha_cutoff" : .2
             }
 
-    def draw(self, *args, **kwargs):
+    def _ondraw(self, *args, **kwargs):
         mesh = kwargs["mesh"]
         app = kwargs["app"]
         model_matrix = kwargs["model_matrix"]
 
-        self.use()
         self.link_attrib_vbo(mesh.vbo, mesh.attrib_order)
         self.set_model_matrix(model_matrix)
-        self.toggle_textures()
 
         self.set_light_uniforms(app.lights)
         self.set_camera_uniforms(app.camera)
@@ -360,7 +370,6 @@ class MeshShader(BaseShader):
         self.set_time(time)
 
         mesh.draw()
-        self.toggle_textures(bind=False)
 
     def set_material_uniforms(self, params = None):
         if params is None:
@@ -372,6 +381,8 @@ class MeshShader(BaseShader):
         self.set_uniform_bool (params["unshaded"], "u_material.unshaded")
         self.set_uniform_bool (params["receive_ambient"], "u_material.receive_ambient")
         self.set_uniform_float(params["shininess"], "u_material.shininess")
+        self.set_uniform_bool (params["alpha_discard"], "u_material.alpha_discard")
+        self.set_uniform_float(params["alpha_cutoff"], "u_material.alpha_cutoff")
 
     def set_camera_uniforms(self, camera: 'Camera'):
         self.set_uniform_matrix(camera.projection_matrix.values, "u_projection_matrix")
@@ -440,20 +451,17 @@ class SkyboxShader(BaseShader):
 
         print()
 
-    def draw(self, *args, **kwargs):
+    def _ondraw(self, *args, **kwargs):
         app = kwargs["app"]
 
-        self.use()
         self.link_attrib_vbo(self.sky_mesh.vbo, self.sky_mesh.attrib_order)
         self.set_camera_uniforms(app.camera)
         self.set_uniform_int(app.environment.tonemap.value, "u_tonemap_mode")
-        self.toggle_textures()
 
         time = np.float32(app.ticks / 1000.)
         self.set_time(time)
 
         self.sky_mesh.draw()
-        self.toggle_textures(bind=False)
 
     def set_rotation(self, angle):
         self.set_uniform_float(angle, "u_rotation")

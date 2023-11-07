@@ -139,9 +139,9 @@ class Sphere(DrawnEntity):
 
 
 class Plane(DrawnEntity):
-    def __init__(self, parent_app, origin=Vector3D.ZERO, normal=Vector3D.UP, scale=Vector3D.ONE, color="white",
+    def __init__(self, parent_app, origin=Vector3D.ZERO, normal=Vector3D.UP, scale=Vector3D.ONE, up_rotation = 0., color="white",
                  name="", shader=None):
-        rotation = Vector3D(*euler_from_vectors(normal))
+        rotation = Vector3D(*euler_from_vectors(normal)) + Vector3D.UP * up_rotation
 
         super().__init__(parent_app, mesh=PlaneMesh(), origin=origin, rotation=rotation, scale=scale,
                          name=name,color=color, shader=shader)
