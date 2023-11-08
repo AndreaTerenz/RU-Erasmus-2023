@@ -55,16 +55,12 @@ uniform vec4 u_camera_position;
 uniform int u_light_count;
 
 uniform float u_time;
+uniform vec2 u_uv_offset;
+uniform vec2 u_uv_scale;
 
 varying vec4 v_pos;
 varying vec4 v_norm;
 varying vec2 v_uv;
-
-vec4 get_base_diffuse()
-{
-	vec4 tex_color = (u_material.use_diff_texture) ? texture(u_material.diffuse_tex, v_uv) : WHITE;
-	return u_material.diffuse_color * tex_color;
-}
 
 float rand(vec2 co)
 {
@@ -170,15 +166,12 @@ vec4 tonemap(vec4 color)
 {
 	vec3 col = color.rgb;
 
-	switch (u_env.tonemap_mode)
-	{
-		case TONEMAP_ACES:
-			return vec4(aces(col), color.a);
-		case TONEMAP_REINHARD:
-			return vec4(reinhard(col), color.a);
-		case TONEMAP_UNCHARTED2:
-			return vec4(uncharted2_filmic(col), color.a);
-	}
+	if (u_env.tonemap_mode == TONEMAP_ACES)
+		return vec4(aces(col), color.a);
+	if (u_env.tonemap_mode == TONEMAP_REINHARD)
+		return vec4(reinhard(col), color.a);
+	if (u_env.tonemap_mode == TONEMAP_UNCHARTED2)
+		return vec4(uncharted2_filmic(col), color.a);
 
 	return clamp(color, 0., 1.);
 }
@@ -192,6 +185,14 @@ vec4 apply_transparency(vec4 input_color, float alpha)
 
 	return input_color;
 }
+
+//--INJECTION-BEGIN
+vec4 get_base_diffuse()
+{
+	vec4 tex_color = (u_material.use_diff_texture) ? texture(u_material.diffuse_tex, v_uv) : WHITE;
+	return u_material.diffuse_color * tex_color;
+}
+//--INJECTION-END
 
 void main(void)
 {

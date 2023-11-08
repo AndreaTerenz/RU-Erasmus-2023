@@ -36,6 +36,7 @@ Requires Python 3.11 or higher
 - [x] ~~TEXTURES!!!!~~
 - [x] ~~Blending & transparency~~
 - [x] ~~UV scale & offset~~
+- [ ] Custom shader code injection
 
 ### To do in theory but would probably take too long
 

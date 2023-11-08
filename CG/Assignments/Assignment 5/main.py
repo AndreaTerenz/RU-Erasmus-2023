@@ -7,7 +7,7 @@ from game_entities import Player
 from oven_engine_3D.base_app import BaseApp3D
 from oven_engine_3D.entities import Plane, DrawnEntity, Cube, Sphere
 from oven_engine_3D.environment import Environment
-from oven_engine_3D.shaders import MeshShader
+from oven_engine_3D.shaders import MeshShader, CustomMeshShader
 from oven_engine_3D.utils.geometry import Vector3D, Vector2D
 from oven_engine_3D.utils.textures import TexturesManager
 
@@ -38,16 +38,16 @@ class Assignment5(BaseApp3D):
         self.lights.append(self.player.light)
         self.add_entity(self.player)
 
-        plane_mat = MeshShader(diffuse_texture="res/textures/uvgrid.jpg", material_params={
-            "uv_scale": Vector2D(10., 10.)
+        plane_mat = CustomMeshShader("shaders/injected/uvwarp.frag", diffuse_texture="res/textures/uvgrid.jpg", material_params={
+            "uv_scale": Vector2D.ONE
         })
         self.add_entity(Plane(self, origin=Vector3D.DOWN * 5., scale=30., shader=plane_mat))
 
-        mat1 = MeshShader(specular_texture="res/textures/img1.png",
+        mat1 = MeshShader(specular_texture="res/textures/img1_specular.png",
+                          diffuse_texture="res/textures/img1.png",
                           material_params={
                               "diffuse_color": "dodgerblue4",
                               "shininess": 128.,
-                              "uv_offset": Vector2D.RIGHT * .4
                           })
         mat2 = mat1.variation(diffuse_texture="", specular_texture="", params={"diffuse_color": "red", "shininess": 10.})
         mat3 = mat2.variation(params={"diffuse_color": "yellow"})
@@ -56,15 +56,11 @@ class Assignment5(BaseApp3D):
         self.add_entity(DrawnEntity(mesh="res/models/teapot.obj", parent_app=self, shader=mat2))
         self.add_entity(DrawnEntity(mesh="res/models/bunny.obj", parent_app=self, shader=mat3))
 
-        map_mat = MeshShader(diffuse_texture="res/textures/map.jpg")
+        map_mat = CustomMeshShader("shaders/injected/rotation.frag", diffuse_texture="res/textures/map.jpg")
         moon_mat = map_mat.variation(diffuse_texture="res/textures/map_moon.jpg")
         self.add_entity(Sphere(parent_app=self, origin=Vector3D.BACKWARD * 10., shader=map_mat, scale=2.))
         self.add_entity(
             Sphere(parent_app=self, origin=Vector3D.BACKWARD * 10. + Vector3D.RIGHT * 5., shader=moon_mat, scale=.5))
-        """
-        # mat5 = mat1.variation(diffuse_texture="", frag_shader_path="shaders/funky.frag", params = {"unshaded": False})
-        # self.add_entity(MeshEntity(mesh="res/models/monke.obj", parent_app=self, shader=mat5))
-        """
 
         grass_tex = TexturesManager.load_texture("res/textures/grass_transp.png", clamping=GL_CLAMP_TO_EDGE)
         mat_grass = MeshShader(diffuse_texture=grass_tex, material_params={"transparency_mode": MeshShader.TransparencyMode.ALPHA_BLEND})
@@ -74,6 +70,9 @@ class Assignment5(BaseApp3D):
         mat_window = MeshShader(diffuse_texture=window_tex, material_params={"transparency_mode": MeshShader.TransparencyMode.ALPHA_BLEND})
         self.add_entity(Plane(self, origin=Vector3D.BACKWARD * 3., normal=Vector3D.BACKWARD, shader=mat_window))
         self.add_entity(Plane(self, origin=Vector3D.BACKWARD, normal=Vector3D.BACKWARD, shader=mat_window))
+
+        test = CustomMeshShader("shaders/injected/funky.frag", diffuse_texture="res/textures/window_semitransp.png")
+        self.add_entity(Cube(self, origin=Vector3D.LEFT * 8., shader=test))
 
     def update(self, delta):
         pass

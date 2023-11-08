@@ -45,16 +45,8 @@ class BaseShader(ABC):
         def attrib_size(self):
             return self.elem_count * self.elem_size
 
-    def __init__(self, vert_shader_path, frag_shader_path, material_params=None, transparent=False):
-
-        self.vert_shader_path = vert_shader_path
-        self.frag_shader_path = frag_shader_path
-
+    def __init__(self, vert_shader_path, frag_shader_path, material_params=None, transparent=False, defer_compile=False, **kwargs):
         self.transparent = transparent
-        if material_params is not None and "alpha_discard" in material_params:
-            self.transparent = transparent and not material_params["alpha_discard"]
-
-        self.renderingProgramID = MeshShader.get_shader_program(self.vert_shader_path, self.frag_shader_path)
 
         self.uniform_locations = {}
         self.attributes = {}
@@ -68,6 +60,14 @@ class BaseShader(ABC):
         self.material_params = material_params
         add_missing(self.material_params, def_params)
 
+        self.vert_shader_path = vert_shader_path
+        self.frag_shader_path = frag_shader_path
+        self.renderingProgramID = 0
+
+        if not defer_compile:
+            # self.renderingProgramID = MeshShader.get_shader_program(self.vert_shader_path, self.frag_shader_path)
+            self.compile()
+
     def add_attribute(self, name, elem_count, dtype, atype):
         if atype in self.attributes:
             return
@@ -79,6 +79,20 @@ class BaseShader(ABC):
         self.total_attrib_size += attr.attrib_size
 
         return loc
+
+    def on_compile(self):
+        pass
+
+    def compile(self):
+        if self.compiled:
+            return
+
+        self.renderingProgramID = MeshShader.get_shader_program(self.vert_shader_path, self.frag_shader_path)
+        self.on_compile()
+
+    @property
+    def compiled(self):
+        return self.renderingProgramID > 0
 
     @staticmethod
     @abstractmethod
@@ -128,11 +142,11 @@ class BaseShader(ABC):
             with open(shader_path) as shader_file:
                 glShaderSource(shader_id, shader_file.read())
         except FileNotFoundError:
-            assert False, "Shader compilation failed"
+            assert False, f"Shader file '{shader_file}' not found"
 
         glCompileShader(shader_id)
         result = glGetShaderiv(shader_id, GL_COMPILE_STATUS)
-        assert result == 1, f"Couldn't compile shader\nShader compilation Log:\n{str(glGetShaderInfoLog(shader_id))}"
+        assert result == 1, f"Couldn't compile shader {str(shader_file)} \nShader compilation Log:\n{str(glGetShaderInfoLog(shader_id))}"
 
         lookup[shader_path] = shader_id
 
@@ -183,6 +197,8 @@ class BaseShader(ABC):
         return glGetAttribLocation(self.renderingProgramID, attrib_name)
 
     def use(self):
+        assert self.compiled, "Unable to use a non compiled shader!"
+
         try:
             glUseProgram(self.renderingProgramID)
         except OpenGL.error.GLError:
@@ -310,7 +326,8 @@ class MeshShader(BaseShader):
         ALPHA_DISCARD = 1
         ALPHA_BLEND = 2
 
-    def __init__(self, diffuse_texture : [int|str] = "", specular_texture : [int|str] = "", material_params=None, ignore_camera_pos=False):
+    def __init__(self, diffuse_texture : [int|str] = "", specular_texture : [int|str] = "",
+                 material_params=None, ignore_camera_pos=False, **kwargs):
         def load_texture_from_id(input_id: [int|str]):
             if type(input_id) is int and input_id >= 0:
                 return input_id
@@ -318,27 +335,28 @@ class MeshShader(BaseShader):
                 return TexturesManager.load_texture(input_id, filtering=GL_LINEAR)
             return 0
 
+        self.ignore_camera_pos = ignore_camera_pos
+        self.diff_tex_id = load_texture_from_id(diffuse_texture)
+        self.spec_tex_id = load_texture_from_id(specular_texture)
+
         super().__init__(material_params=material_params,
                          transparent=False,
                          vert_shader_path=MeshShader.DEFAULT_VERTEX,
-                         frag_shader_path=MeshShader.DEFAULT_FRAG)
+                         frag_shader_path=MeshShader.DEFAULT_FRAG,
+                         **kwargs)
 
+        self.transparent = self.material_params["transparency_mode"] == MeshShader.TransparencyMode.ALPHA_BLEND
+
+
+    def on_compile(self):
         self.add_attribute("a_position", 3, GLfloat, BaseShader.POS_ATTRIB_ID)
         self.add_attribute("a_normal", 3, GLfloat, BaseShader.NORM_ATTRIB_ID)
         self.add_attribute("a_uv", 2, GLfloat, BaseShader.UV_ATTRIB_ID)
 
-        self.ignore_camera_pos = ignore_camera_pos
-
-        self.transparent = self.material_params["transparency_mode"] == MeshShader.TransparencyMode.ALPHA_BLEND
-
         self.use()
-        self.diff_tex_id = load_texture_from_id(diffuse_texture)
         self.set_diffuse_texture()
-        self.spec_tex_id = load_texture_from_id(specular_texture)
         self.set_specular_texture()
         self.set_material_uniforms()
-
-        print()
 
     def duplicate(self):
         return self.variation()
@@ -456,19 +474,19 @@ class SkyboxShader(BaseShader):
 
         super().__init__(material_params=material_params,
                          vert_shader_path=SkyboxShader.SKY_VERTEX,
-                         frag_shader_path=SkyboxShader.SKY_FRAG)
-
-        self.add_attribute("a_position", 3, GLfloat, BaseShader.POS_ATTRIB_ID)
+                         frag_shader_path=SkyboxShader.SKY_FRAG,
+                         defer_compile=False)
 
         self.sky_mesh = SkyboxMesh()
-
         self.cubemap_id = cubemap_id
+
+        # No need for on_compile since we're never deferring compilation for a skybox shader
+
+        self.add_attribute("a_position", 3, GLfloat, BaseShader.POS_ATTRIB_ID)
 
         self.use()
         self.set_rotation(self.material_params["rotation"])
         self.set_cubemap()
-
-        print()
 
     def _ondraw(self, *args, **kwargs):
         app = kwargs["app"]
@@ -514,5 +532,43 @@ class SkyboxShader(BaseShader):
             "rotation": math.tau/4.
         }
 
+class CustomMeshShader(MeshShader):
+    INJECTION_BEGIN_ID = "//--INJECTION-BEGIN"
+    INJECTION_END_ID = "//--INJECTION-END"
 
+    def __init__(self, injected_source_path : str, **kwargs):
+        with open(injected_source_path) as file:
+            injected_lines = file.readlines()
 
+        with open(MeshShader.DEFAULT_FRAG) as file:
+            source_lines = file.readlines()
+
+        inj_start = source_lines.index(f"{CustomMeshShader.INJECTION_BEGIN_ID}\n")
+        inj_end = source_lines.index(f"{CustomMeshShader.INJECTION_END_ID}\n")
+
+        assert inj_start != -1 and inj_end != -1, "Unable to find injection points"
+
+        src_head = source_lines[:inj_start+1]
+        src_tail = source_lines[inj_end:]
+        source_lines = src_head + injected_lines + src_tail
+
+        # Print source_lines
+        print("".join(source_lines))
+
+        # Write to temp file
+        if not os.path.exists("shaders/cache"):
+            os.makedirs("shaders/cache")
+
+        pure_injected_name = os.path.basename(injected_source_path)
+        pure_injected_name = os.path.splitext(pure_injected_name)[0]
+
+        tmp_file = f"shaders/cache/tmp_{pure_injected_name}"
+        open_mode = "w" if os.path.exists(tmp_file) else "x"
+
+        with open(tmp_file, open_mode) as file:
+            file.writelines(source_lines)
+
+        super().__init__(defer_compile=True, **kwargs)
+
+        self.frag_shader_path = tmp_file
+        self.compile()
