@@ -536,11 +536,25 @@ class CustomMeshShader(MeshShader):
     INJECTION_BEGIN_ID = "//--INJECTION-BEGIN"
     INJECTION_END_ID = "//--INJECTION-END"
 
-    def __init__(self, injected_source_path : str, **kwargs):
-        with open(injected_source_path) as file:
+    def __init__(self, injected_vert = "", injected_frag = "", **kwargs):
+        need_defer = (injected_vert != "" or injected_frag != "")
+
+        super().__init__(defer_compile=need_defer, **kwargs)
+
+        if need_defer:
+            if injected_vert != "":
+                self.vert_shader_path = CustomMeshShader.inject_code(injected_vert, MeshShader.DEFAULT_VERTEX)
+            if injected_frag != "":
+                self.frag_shader_path = CustomMeshShader.inject_code(injected_frag, MeshShader.DEFAULT_FRAG)
+
+            self.compile()
+
+    @staticmethod
+    def inject_code(inject_source, inject_target):
+        with open(inject_source) as file:
             injected_lines = file.readlines()
 
-        with open(MeshShader.DEFAULT_FRAG) as file:
+        with open(inject_target) as file:
             source_lines = file.readlines()
 
         inj_start = source_lines.index(f"{CustomMeshShader.INJECTION_BEGIN_ID}\n")
@@ -556,7 +570,7 @@ class CustomMeshShader(MeshShader):
         if not os.path.exists("shaders/cache"):
             os.makedirs("shaders/cache")
 
-        pure_injected_name = os.path.basename(injected_source_path)
+        pure_injected_name = os.path.basename(inject_source)
         pure_injected_name = os.path.splitext(pure_injected_name)[0]
 
         tmp_file = f"shaders/cache/tmp_{pure_injected_name}"
@@ -565,7 +579,4 @@ class CustomMeshShader(MeshShader):
         with open(tmp_file, open_mode) as file:
             file.writelines(source_lines)
 
-        super().__init__(defer_compile=True, **kwargs)
-
-        self.frag_shader_path = tmp_file
-        self.compile()
+        return tmp_file

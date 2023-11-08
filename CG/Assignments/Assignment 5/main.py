@@ -40,9 +40,9 @@ class Assignment5(BaseApp3D):
         self.lights.append(self.player.light)
         self.add_entity(self.player)
 
-        plane_mat = CustomMeshShader("shaders/injected/uvwarp.frag", diffuse_texture="res/textures/uvgrid.jpg", material_params={
-            "uv_scale": Vector2D.ONE
-        })
+        plane_mat = CustomMeshShader(injected_vert="shaders/injected/pulse.vert",
+                                     diffuse_texture="res/textures/uvgrid.jpg",
+                                     material_params={"uv_scale": Vector2D.ONE})
         self.add_entity(Plane(self, origin=Vector3D.DOWN * 5., scale=30., shader=plane_mat))
 
         mat1 = MeshShader(#specular_texture="res/textures/crate/crate_spec.png",
@@ -57,7 +57,7 @@ class Assignment5(BaseApp3D):
 
         self.add_entity(DrawnEntity(mesh="res/models/bunny.obj", parent_app=self, origin=Vector3D.FORWARD * 7., shader=mat3))
 
-        map_mat = CustomMeshShader("shaders/injected/rotation.frag", diffuse_texture="res/textures/map.jpg")
+        map_mat = CustomMeshShader(injected_frag="shaders/injected/rotation.frag", diffuse_texture="res/textures/map.jpg")
         moon_mat = map_mat.variation(diffuse_texture="res/textures/map_moon.jpg")
         self.add_entity(Sphere(parent_app=self, origin=Vector3D.BACKWARD * 10., shader=map_mat, scale=2.))
         self.add_entity(
@@ -73,7 +73,7 @@ class Assignment5(BaseApp3D):
         self.add_entity(Plane(self, origin=Vector3D.BACKWARD * 2. + Vector3D.RIGHT, normal=Vector3D.RIGHT, shader=mat_window))
         self.add_entity(Plane(self, origin=Vector3D.BACKWARD, normal=Vector3D.BACKWARD, shader=mat_window))
 
-        test = CustomMeshShader("shaders/injected/funky.frag", diffuse_texture="res/textures/window_semitransp.png")
+        test = CustomMeshShader(injected_frag="shaders/injected/funky.frag", diffuse_texture="res/textures/window_semitransp.png")
         self.add_entity(Cube(self, origin=Vector3D.LEFT * 8., shader=test))
 
         self.bezier_test = BezierCurve([BezierPoint(Vector3D.ZERO, Vector3D.BACKWARD),
