@@ -552,9 +552,6 @@ class CustomMeshShader(MeshShader):
         src_tail = source_lines[inj_end:]
         source_lines = src_head + injected_lines + src_tail
 
-        # Print source_lines
-        print("".join(source_lines))
-
         # Write to temp file
         if not os.path.exists("shaders/cache"):
             os.makedirs("shaders/cache")
