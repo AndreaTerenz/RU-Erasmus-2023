@@ -45,10 +45,10 @@ class Assignment5(BaseApp3D):
         })
         self.add_entity(Plane(self, origin=Vector3D.DOWN * 5., scale=30., shader=plane_mat))
 
-        mat1 = MeshShader(specular_texture="res/textures/crate/crate_spec.png",
+        mat1 = MeshShader(#specular_texture="res/textures/crate/crate_spec.png",
                           diffuse_texture="res/textures/crate/crate_diff.png",
                           material_params={
-                              "shininess": 128.,
+                              "shininess": 256.,
                           })
         mat2 = mat1.variation(diffuse_texture="", specular_texture="", params={"diffuse_color": "red", "shininess": 10.})
         mat3 = mat2.variation(params={"diffuse_color": "yellow"})
@@ -79,16 +79,17 @@ class Assignment5(BaseApp3D):
         self.bezier_test = BezierCurve([BezierPoint(Vector3D.ZERO, Vector3D.BACKWARD),
                                         BezierPoint(Vector3D(0., 1., -1.) * 4., Vector3D.FORWARD),
                                         BezierPoint(Vector3D(0., 0., -2.) * 4., Vector3D.FORWARD),],
-                                       loop_mode=BezierCurve.LoopMode.NONE)
+                                       loop_mode=BezierCurve.LoopMode.LOOP)
 
-        self.teapot_origin = Vector3D.RIGHT * 5.
+        self.teapot_start = Vector3D.RIGHT * 5.
+        self.teapot_last_pos = self.teapot_start
         self.teapot = DrawnEntity(mesh="res/models/teapot.obj", parent_app=self, origin=Vector3D.RIGHT * 5., shader=mat2)
         self.add_entity(self.teapot)
 
     def update(self, delta):
-        pass
-        # self.teapot.translate(Vector3D.UP * delta * .5)
-        self.teapot.translate_to(self.bezier_test.interpolate_next(delta * .3) + self.teapot_origin)
+        if not self.bezier_test.done:
+            pos, _dir = self.bezier_test.interpolate_next(delta * .2)
+            self.teapot.translate_to(pos + self.teapot_start)
 
     def display(self):
         pass

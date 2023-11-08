@@ -122,6 +122,34 @@ class ModelMatrix(Matrix):
         self.add_transformation(rot_mat_y)
         self.add_transformation(rot_mat_z)
 
+    def look_at(self, target, up_vector = Vector3D.UP):
+        # Calculate Z-axis
+        z_axis = target.normalized
+
+        # Calculate X-axis
+        x_axis = up_vector.cross(z_axis).normalized
+
+        # Calculate Y-axis
+        y_axis = z_axis.cross(x_axis)
+
+        # Form rotation matrix
+        rotation_matrix = np.array([x_axis, y_axis, z_axis])
+
+        # Extract Euler angles (in XYZ order)
+        sy = np.sqrt(rotation_matrix[0, 0] * rotation_matrix[0, 0] + rotation_matrix[1, 0] * rotation_matrix[1, 0])
+        singular = sy < 1e-6
+
+        if not singular:
+            x = np.arctan2(rotation_matrix[2, 1], rotation_matrix[2, 2])
+            y = np.arctan2(-rotation_matrix[2, 0], sy)
+            z = np.arctan2(rotation_matrix[1, 0], rotation_matrix[0, 0])
+        else:
+            x = np.arctan2(-rotation_matrix[1, 2], rotation_matrix[1, 1])
+            y = np.arctan2(-rotation_matrix[2, 0], sy)
+            z = 0
+
+        self.add_rotation(x, y, z)
+
     def add_scale(self, x : [float|Vector3D], y = None, z = None):
         if type(x) is Vector3D:
             scale = x

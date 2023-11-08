@@ -1,11 +1,9 @@
 from enum import Enum
 from typing import Collection
 
-from oven_engine_3D.utils.geometry import Vector3D
-
 
 class BezierPoint:
-    def __init__(self, position: Vector3D, handle: Vector3D):
+    def __init__(self, position, handle):
         self.position = position
         self.__handle = handle
 
@@ -24,7 +22,7 @@ class BezierCurve:
 
         self.points = list(points)
         self.loop_mode = loop_mode
-        self.__lengths = [self.segment_length(i) for i in range(len(self) - 1)]
+        self.__lengths = [] # [self.segment_length(i) for i in range(len(self) - 1)]
         self.current_t = 0.
         # self.direction = 1.
         self.current_segment = 0
@@ -41,26 +39,34 @@ class BezierCurve:
         end = self.points[start_idx + 1]
 
         p1, p2 = start.position, start.handle
-        if t <= 0.:
-            return p1
-
-        p3, p4 = end.handle, end.position
-        if t >= 1.:
-            return p4
-
         # Unless this is the first segment,
         # the start handle is the reflection of the previous end handle
         if start_idx != 0:
             p2 = 2*p1 - p2
 
+        if t <= 0.:
+            return p1, p2
+
+        p3, p4 = end.handle, end.position
+        if t >= 1.:
+            return p4, p3
+
         t_cube = t**3
         t_square = t**2
 
         # Bernstein polynomials
-        return p1 * (-t_cube + 3*t_square - 3*t + 1) + \
+        output = p1 * (-t_cube + 3*t_square - 3*t + 1) + \
                p2 * (3*t_cube - 6*t_square + 3*t) + \
                p3 * (-3*t_cube + 3*t_square) + \
                p4 * t_cube
+
+        # Compute derivative
+        output_deriv = (p1 * (-t_square - 2*t + 1) +
+                        p2 * (3*t_square - 4*t + 1) +
+                        p3 * (-3*t_square + 2*t) +
+                        p4 * (3*t_square)) * 3
+
+        return output, output_deriv.normalized
 
     """def add_point(self, point: BezierPoint, index: int = -1):
         if index == -1:
@@ -112,8 +118,9 @@ class BezierCurve:
         return self.current_segment == self.last_start_idx and self.current_t == 1.
 
     def interpolate_next(self, time_delta: float):
-        if self.done:
-            return self.points[-1].position
+        assert not self.done, "Bezier curve is done"
+        """if self.done:
+            return self.points[-1].position, self.points[-1].handle"""
 
         self.current_t += time_delta
         output = self.interpolate_segment(self.current_segment, self.current_t)

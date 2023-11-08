@@ -10,15 +10,22 @@ from oven_engine_3D.utils.matrices import ModelMatrix
 
 
 class Entity(ABC):
-    def __init__(self, parent_app, origin=Vector3D.ZERO, rotation=Vector3D.ZERO, scale=Vector3D.ONE, name=""):
+    def __init__(self, parent_app, origin=Vector3D.ZERO, rotation=Vector3D.ZERO, scale=Vector3D.ONE, name="", to_follow : "Entity" = None, **kwargs):
         self.origin = origin
         self.rotation = rotation
         self.scale = scale
         self.model_matrix = ModelMatrix.from_transformations(origin, rotation, scale)
         self.name = shortuuid.uuid() if name == "" else name
         self.parent_app = parent_app
+        self.to_follow = to_follow
+        self.initial_follow_delta = None
+        if to_follow is not None:
+            self.initial_follow_delta = self.origin - to_follow.origin
 
     def update(self, delta):
+        if self.to_follow is not None:
+            self.translate_to(self.to_follow.origin + self.initial_follow_delta)
+
         self.model_matrix.load_identity()
         self.model_matrix.add_translation(self.origin)
         self.model_matrix.add_rotation(self.rotation)
@@ -30,11 +37,17 @@ class Entity(ABC):
     def forward(self):
         return self.to_global(Vector3D.FORWARD)
 
+    @property
+    def right(self):
+        return self.to_global(Vector3D.RIGHT)
+
+    @property
+    def up(self):
+        return self.to_global(Vector3D.UP)
+
     def translate_to(self, position: Vector3D):
         self.origin = position
         return self
-
-        # return self.translate(position - self.origin)
 
     def translate(self, offset: Vector3D):
         self.origin += offset
@@ -49,6 +62,11 @@ class Entity(ABC):
     def rotate(self, angle, axis=Vector3D.UP):
         self.rotation += angle * axis
         # self.model_matrix.add_rotation(angle * axis)
+        return self
+
+    def look_at(self, target: Vector3D, up=Vector3D.UP):
+        #self.rotation = Vector3D(*euler_from_vectors(target - self.origin, up))
+        self.model_matrix.look_at(target, up)
         return self
 
     def to_global(self, local_pos: Vector3D):
@@ -69,8 +87,9 @@ class Entity(ABC):
 
 class DrawnEntity(Entity):
 
-    def __init__(self, parent_app, mesh: [str|Mesh], origin=Vector3D.ZERO, rotation=Vector3D.ZERO, scale=Vector3D.ONE, name="", color="white", shader=None):
-        super().__init__(parent_app, origin, rotation, scale, name=name)
+    def __init__(self, parent_app, mesh: [str|Mesh], origin=Vector3D.ZERO, rotation=Vector3D.ZERO, scale=Vector3D.ONE,
+                 name="", color="white", shader=None, **kwargs):
+        super().__init__(parent_app, origin, rotation, scale, name=name, **kwargs)
 
         if shader is None:
             shader = MeshShader(material_params={"diffuse_color" : color})
@@ -125,10 +144,10 @@ class Skybox(DrawnEntity):
 
 class Sphere(DrawnEntity):
     def __init__(self, parent_app, origin=Vector3D.ZERO, rotation=Vector3D.ZERO, scale=Vector3D.ONE,
-                 slices=32, stacks=0, name="", color="white", shader=None):
+                 slices=32, stacks=0, name="", color="white", shader=None, **kwargs):
         mesh = SphereMesh(n_slices=slices, n_stacks=stacks)
         super().__init__(parent_app, mesh=mesh, origin=origin, rotation=rotation, scale=scale,
-                         name=name, color=color, shader=shader)
+                         name=name, color=color, shader=shader, **kwargs)
 
 
     def handle_event(self, ev):

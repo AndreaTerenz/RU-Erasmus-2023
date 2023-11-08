@@ -12,14 +12,14 @@ class Camera(Entity):
 
     def __init__(self, parent_app,
                  eye = Vector3D.ZERO, look_at = Vector3D.FORWARD, up_vec=Vector3D.UP,
-                 fov =math.tau / 8., ratio =16. / 9., near=.5, far=100):
+                 fov =math.tau / 8., ratio =16. / 9., near=.5, far=100, local_look_at=False):
         super().__init__(parent_app, origin=eye)
 
         self.projection_matrix = ProjectionMatrix.perspective(fov, ratio, near=near, far=far)
         self.view_matrix = ViewMatrix()
         self.target = Vector3D.ZERO
 
-        look_at = self.to_global(look_at)
+        look_at = eye + look_at if local_look_at else self.to_global(look_at)
 
         self.look_at(look_at, up_vec)
 

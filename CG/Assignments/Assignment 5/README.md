@@ -36,7 +36,10 @@ Requires Python 3.11 or higher
 - [x] ~~TEXTURES!!!!~~
 - [x] ~~Blending & transparency~~
 - [x] ~~UV scale & offset~~
-- [ ] Custom shader code injection
+- [x] ~~Custom shader code injection~~
+- [ ] Bezier splines for smooth movement
+  - [x] ~~Basic implementation~~
+  - [ ] Make object (optionally) point in direction of movement
 
 ### To do in theory but would probably take too long
 
