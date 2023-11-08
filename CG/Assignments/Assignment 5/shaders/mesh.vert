@@ -5,6 +5,8 @@ attribute vec2 a_uv;
 uniform mat4 u_model_matrix;
 uniform mat4 u_view_matrix;
 uniform mat4 u_projection_matrix;
+uniform vec2 u_uv_offset;
+uniform vec2 u_uv_scale;
 
 uniform float u_time;
 
@@ -14,7 +16,7 @@ varying vec2 v_uv;
 
 void main(void)
 {
-	v_uv = a_uv;
+	v_uv = a_uv * u_uv_scale + u_uv_offset; // + vec2(u_time * .5, 0.0);
 
 	vec4 position = vec4(a_position, 1.0);
 	v_norm = vec4(a_normal, 0.0);

@@ -1,6 +1,7 @@
 import math
 import os.path
 from abc import abstractmethod, ABC
+from enum import Enum
 from typing import Collection
 
 import OpenGL.GLUT
@@ -11,7 +12,7 @@ from OpenGL.error import GLError
 from pygame import Color
 
 from oven_engine_3D.environment import Environment
-from oven_engine_3D.utils.geometry import Vector3D
+from oven_engine_3D.utils.geometry import Vector3D, Vector2D
 from oven_engine_3D.utils.misc import is_collection
 from oven_engine_3D.utils.textures import TexturesManager
 
@@ -44,14 +45,14 @@ class BaseShader(ABC):
         def attrib_size(self):
             return self.elem_count * self.elem_size
 
-    def __init__(self, vert_shader_path, frag_shader_path, params=None, transparent=False):
+    def __init__(self, vert_shader_path, frag_shader_path, material_params=None, transparent=False):
 
         self.vert_shader_path = vert_shader_path
         self.frag_shader_path = frag_shader_path
 
         self.transparent = transparent
-        if params is not None and "alpha_discard" in params:
-            self.transparent = transparent and not params["alpha_discard"]
+        if material_params is not None and "alpha_discard" in material_params:
+            self.transparent = transparent and not material_params["alpha_discard"]
 
         self.renderingProgramID = MeshShader.get_shader_program(self.vert_shader_path, self.frag_shader_path)
 
@@ -61,11 +62,11 @@ class BaseShader(ABC):
         self.textures = {}
 
         def_params = self.__class__.get_default_params()
-        if params is None:
-            params = def_params
+        if material_params is None:
+            material_params = def_params
 
-        self.params = params
-        add_missing(self.params, def_params)
+        self.material_params = material_params
+        add_missing(self.material_params, def_params)
 
     def add_attribute(self, name, elem_count, dtype, atype):
         if atype in self.attributes:
@@ -250,6 +251,11 @@ class BaseShader(ABC):
         else:
             glUniform3f(loc, *vector)
 
+    def set_uniform_vec2D(self, vector: Vector2D, uniform_name):
+        loc = self.get_uniform_loc(uniform_name)
+
+        glUniform2f(loc, *vector)
+
     def set_uniform_float(self, value: [float|Collection], uniform_name):
         count = 1 if not is_collection(value) else len(value)
 
@@ -257,7 +263,10 @@ class BaseShader(ABC):
         glUniform1fv(loc, count, value)
 
     def set_uniform_int(self, value: [int|Collection], uniform_name):
-        count = 1 if not is_collection(value) else len(value)
+        if not is_collection(value):
+            value = [value]
+
+        count = len(value)
 
         loc = self.get_uniform_loc(uniform_name)
         glUniform1iv(loc, count, value)
@@ -296,7 +305,12 @@ class MeshShader(BaseShader):
     DEFAULT_VERTEX = os.path.join(DEFAULT_SHADER_DIR, "mesh.vert")
     DEFAULT_FRAG =  os.path.join(DEFAULT_SHADER_DIR, "mesh.frag")
 
-    def __init__(self, diffuse_texture : [int|str] = "", specular_texture : [int|str] = "", params=None, ignore_camera_pos=False, transparent=False):
+    class TransparencyMode(Enum):
+        NONE = 0
+        ALPHA_DISCARD = 1
+        ALPHA_BLEND = 2
+
+    def __init__(self, diffuse_texture : [int|str] = "", specular_texture : [int|str] = "", material_params=None, ignore_camera_pos=False):
         def load_texture_from_id(input_id: [int|str]):
             if type(input_id) is int and input_id >= 0:
                 return input_id
@@ -304,9 +318,8 @@ class MeshShader(BaseShader):
                 return TexturesManager.load_texture(input_id, filtering=GL_LINEAR)
             return 0
 
-
-        super().__init__(params=params,
-                         transparent=transparent,
+        super().__init__(material_params=material_params,
+                         transparent=False,
                          vert_shader_path=MeshShader.DEFAULT_VERTEX,
                          frag_shader_path=MeshShader.DEFAULT_FRAG)
 
@@ -315,6 +328,8 @@ class MeshShader(BaseShader):
         self.add_attribute("a_uv", 2, GLfloat, BaseShader.UV_ATTRIB_ID)
 
         self.ignore_camera_pos = ignore_camera_pos
+
+        self.transparent = self.material_params["transparency_mode"] == MeshShader.TransparencyMode.ALPHA_BLEND
 
         self.use()
         self.diff_tex_id = load_texture_from_id(diffuse_texture)
@@ -327,16 +342,16 @@ class MeshShader(BaseShader):
 
     def duplicate(self):
         return self.variation()
-
+    
     def variation(self, **kwargs):
         print("Shader variation:\n\t", end="")
         print(*kwargs.items(), sep="\n\t")
 
         p = kwargs.get("params", {})
-        add_missing(p, self.params)
+        add_missing(p, self.material_params)
 
         return MeshShader(
-            params=p,
+            material_params=p,
             diffuse_texture=kwargs.get("diffuse_texture", self.diff_tex_id),
             specular_texture=kwargs.get("specular_texture", self.spec_tex_id),
         )
@@ -350,8 +365,10 @@ class MeshShader(BaseShader):
                 "shininess" : 5.,
                 "unshaded" : False,
                 "receive_ambient" : True,
-                "alpha_discard" : True,
-                "alpha_cutoff" : .2
+                "transparency_mode" : MeshShader.TransparencyMode.NONE,
+                "alpha_cutoff" : .2,
+                "uv_scale": Vector2D.ONE,
+                "uv_offset": Vector2D.ZERO,
             }
 
     def _ondraw(self, *args, **kwargs):
@@ -373,16 +390,18 @@ class MeshShader(BaseShader):
 
     def set_material_uniforms(self, params = None):
         if params is None:
-            params = self.params
+            params = self.material_params
 
-        self.set_uniform_color(params["diffuse_color"], "u_material.diffuse_color")
-        self.set_uniform_color(params["specular_color"], "u_material.specular_color")
-        self.set_uniform_color(params["ambient_color"], "u_material.ambient_color")
-        self.set_uniform_bool (params["unshaded"], "u_material.unshaded")
-        self.set_uniform_bool (params["receive_ambient"], "u_material.receive_ambient")
-        self.set_uniform_float(params["shininess"], "u_material.shininess")
-        self.set_uniform_bool (params["alpha_discard"], "u_material.alpha_discard")
-        self.set_uniform_float(params["alpha_cutoff"], "u_material.alpha_cutoff")
+        self.set_uniform_color(params["diffuse_color"],     "u_material.diffuse_color")
+        self.set_uniform_color(params["specular_color"],    "u_material.specular_color")
+        self.set_uniform_color(params["ambient_color"],     "u_material.ambient_color")
+        self.set_uniform_bool (params["unshaded"],          "u_material.unshaded")
+        self.set_uniform_bool (params["receive_ambient"],   "u_material.receive_ambient")
+        self.set_uniform_float(params["shininess"],         "u_material.shininess")
+        self.set_uniform_float(params["alpha_cutoff"],      "u_material.alpha_cutoff")
+        self.set_uniform_int  (params["transparency_mode"].value, "u_material.transparency_mode")
+        self.set_uniform_vec2D(params["uv_scale"], "u_uv_scale")
+        self.set_uniform_vec2D(params["uv_offset"], "u_uv_offset")
 
     def set_camera_uniforms(self, camera: 'Camera'):
         self.set_uniform_matrix(camera.projection_matrix.values, "u_projection_matrix")
@@ -431,11 +450,11 @@ class SkyboxShader(BaseShader):
     SKY_VERTEX = os.path.join(DEFAULT_SHADER_DIR, "sky.vert")
     SKY_FRAG = os.path.join(DEFAULT_SHADER_DIR, "sky.frag")
 
-    def __init__(self, cubemap_id : int, params=None):
+    def __init__(self, cubemap_id : int, material_params=None):
         # Ugly way to shut up circular import error
         from oven_engine_3D.meshes import SkyboxMesh
 
-        super().__init__(params=params,
+        super().__init__(material_params=material_params,
                          vert_shader_path=SkyboxShader.SKY_VERTEX,
                          frag_shader_path=SkyboxShader.SKY_FRAG)
 
@@ -446,7 +465,7 @@ class SkyboxShader(BaseShader):
         self.cubemap_id = cubemap_id
 
         self.use()
-        self.set_rotation(self.params["rotation"])
+        self.set_rotation(self.material_params["rotation"])
         self.set_cubemap()
 
         print()

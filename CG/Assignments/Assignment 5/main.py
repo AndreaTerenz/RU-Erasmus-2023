@@ -8,7 +8,7 @@ from oven_engine_3D.base_app import BaseApp3D
 from oven_engine_3D.entities import Plane, DrawnEntity, Cube, Sphere
 from oven_engine_3D.environment import Environment
 from oven_engine_3D.shaders import MeshShader
-from oven_engine_3D.utils.geometry import Vector3D
+from oven_engine_3D.utils.geometry import Vector3D, Vector2D
 from oven_engine_3D.utils.textures import TexturesManager
 
 
@@ -38,11 +38,18 @@ class Assignment5(BaseApp3D):
         self.lights.append(self.player.light)
         self.add_entity(self.player)
 
-        self.add_entity(Plane(self, origin=Vector3D.DOWN * 5., scale=30., color="white"))
+        plane_mat = MeshShader(diffuse_texture="res/textures/uvgrid.jpg", material_params={
+            "uv_scale": Vector2D(10., 10.)
+        })
+        self.add_entity(Plane(self, origin=Vector3D.DOWN * 5., scale=30., shader=plane_mat))
 
         mat1 = MeshShader(specular_texture="res/textures/img1.png",
-                          params={"diffuse_color": "gray", "shininess": 90.})
-        mat2 = mat1.variation(diffuse_texture="", specular_texture="", params={"diffuse_color": "red", "unshaded": False})
+                          material_params={
+                              "diffuse_color": "dodgerblue4",
+                              "shininess": 128.,
+                              "uv_offset": Vector2D.RIGHT * .4
+                          })
+        mat2 = mat1.variation(diffuse_texture="", specular_texture="", params={"diffuse_color": "red", "shininess": 10.})
         mat3 = mat2.variation(params={"diffuse_color": "yellow"})
 
         self.add_entity(Cube(parent_app=self, shader=mat1, origin=Vector3D.FORWARD * 3.))
@@ -60,11 +67,11 @@ class Assignment5(BaseApp3D):
         """
 
         grass_tex = TexturesManager.load_texture("res/textures/grass_transp.png", clamping=GL_CLAMP_TO_EDGE)
-        mat_grass = MeshShader(diffuse_texture=grass_tex, transparent=True, params={"alpha_discard": True})
+        mat_grass = MeshShader(diffuse_texture=grass_tex, material_params={"transparency_mode": MeshShader.TransparencyMode.ALPHA_BLEND})
         self.add_entity(Plane(self, origin=Vector3D.BACKWARD * 2., normal=Vector3D.BACKWARD, shader=mat_grass, up_rotation=-math.tau/4.))
 
         window_tex = TexturesManager.load_texture("res/textures/window_semitransp.png", clamping=GL_CLAMP_TO_EDGE)
-        mat_window = MeshShader(diffuse_texture=window_tex, transparent=True)
+        mat_window = MeshShader(diffuse_texture=window_tex, material_params={"transparency_mode": MeshShader.TransparencyMode.ALPHA_BLEND})
         self.add_entity(Plane(self, origin=Vector3D.BACKWARD * 3., normal=Vector3D.BACKWARD, shader=mat_window))
         self.add_entity(Plane(self, origin=Vector3D.BACKWARD, normal=Vector3D.BACKWARD, shader=mat_window))
 

@@ -1,5 +1,16 @@
 #define BLACK vec4(0., 0., 0., 1.)
 #define WHITE vec4(1.)
+#define FOG_NONE -1
+#define FOG_LINEAR 0
+#define FOG_EXP 1
+#define FOG_EXP2 2
+#define TONEMAP_NONE -1
+#define TONEMAP_ACES 0
+#define TONEMAP_REINHARD 1
+#define TONEMAP_UNCHARTED2 2
+#define TRANSP_OPAQUE 0
+#define TRANSP_CUTOFF 1
+#define TRANSP_BLEND 2
 
 struct Environment
 {
@@ -32,7 +43,7 @@ struct Material
 	sampler2D diffuse_tex, specular_tex;
 	float shininess;
 	float alpha_cutoff;
-	bool alpha_discard;
+	int transparency_mode; // 0 = opaque, 1 = discard, 2 = normal transparent
 	bool receive_ambient,
 		 unshaded,
 		 use_diff_texture,
@@ -105,14 +116,14 @@ float exp2_fog_factor(float dist)
 
 vec4 apply_fog(vec4 base_color, float dist)
 {
-	if (u_env.fog_mode == -1)
+	if (u_env.fog_mode == FOG_NONE)
 		return base_color;
 
 	float fog_strength = 0.;
 
-	if (u_env.fog_mode == 1)
+	if (u_env.fog_mode == FOG_EXP)
 		fog_strength = exp_fog_factor(dist);
-	else if (u_env.fog_mode == 2)
+	else if (u_env.fog_mode == FOG_EXP2)
 		fog_strength = exp2_fog_factor(dist);
 	else
 		fog_strength = linear_fog_factor(dist);
@@ -161,15 +172,25 @@ vec4 tonemap(vec4 color)
 
 	switch (u_env.tonemap_mode)
 	{
-		case 0:
+		case TONEMAP_ACES:
 			return vec4(aces(col), color.a);
-		case 1:
+		case TONEMAP_REINHARD:
 			return vec4(reinhard(col), color.a);
-		case 2:
+		case TONEMAP_UNCHARTED2:
 			return vec4(uncharted2_filmic(col), color.a);
 	}
 
 	return clamp(color, 0., 1.);
+}
+
+vec4 apply_transparency(vec4 input_color, float alpha)
+{
+	if (u_material.transparency_mode != TRANSP_BLEND)
+		alpha = 1.;
+
+	input_color.a = alpha;
+
+	return input_color;
 }
 
 void main(void)
@@ -178,13 +199,12 @@ void main(void)
 	vec4 base_diff = get_base_diffuse();
 
 	// discard pixel if alpha is too low
-	if (u_material.alpha_discard && base_diff.a < u_material.alpha_cutoff)
+	if (u_material.transparency_mode == TRANSP_CUTOFF && base_diff.a < u_material.alpha_cutoff)
 		discard;
 
 	if (u_material.unshaded)
 	{
-		gl_FragColor = base_diff;
-		gl_FragColor.a = base_diff.a;
+		gl_FragColor = apply_transparency(base_diff, base_diff.a);
 		return;
 	}
 
@@ -207,6 +227,5 @@ void main(void)
 	vec4 fogged_color = apply_fog(shaded_color, camera_dist);
 
 	// tonemap
-	gl_FragColor = tonemap(fogged_color);
-	gl_FragColor.a = base_diff.a;
+	gl_FragColor = apply_transparency(tonemap(fogged_color), base_diff.a);
 }

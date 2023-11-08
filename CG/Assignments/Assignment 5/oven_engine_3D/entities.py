@@ -73,7 +73,7 @@ class DrawnEntity(Entity):
         super().__init__(parent_app, origin, rotation, scale, name=name)
 
         if shader is None:
-            shader = MeshShader(params={"diffuse_color" : color})
+            shader = MeshShader(material_params={"diffuse_color" : color})
 
         self.shader = shader
 

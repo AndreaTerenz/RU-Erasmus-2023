@@ -111,7 +111,8 @@ class BaseApp3D(ABC):
 
         if self.face_culling:
             glEnable(GL_CULL_FACE)
-            glCullFace(GL_FRONT)
+            glFrontFace(GL_CW)
+            glCullFace(GL_BACK)
         else:
             glDisable(GL_CULL_FACE)
 

@@ -34,6 +34,8 @@ Requires Python 3.11 or higher
 - [x] ~~UV coordinates in vbo~~
 - [x] ~~Find out why face culling is broken~~
 - [x] ~~TEXTURES!!!!~~
+- [x] ~~Blending & transparency~~
+- [x] ~~UV scale & offset~~
 
 ### To do in theory but would probably take too long
 
