@@ -173,6 +173,19 @@ vec4 tonemap(vec4 color)
 	if (u_env.tonemap_mode == TONEMAP_UNCHARTED2)
 		return vec4(uncharted2_filmic(col), color.a);
 
+	/*
+	I swear to God this used to work
+	now "switch" is a reserved word that is being used improperly???
+	switch (u_env.tonemap_mode)
+	{
+		case TONEMAP_ACES:
+			return vec4(aces(col), color.a);
+		case TONEMAP_REINHARD:
+			return vec4(reinhard(col), color.a);
+		case TONEMAP_UNCHARTED2:
+			return vec4(uncharted2_filmic(col), color.a);
+	}*/
+
 	return clamp(color, 0., 1.);
 }
 

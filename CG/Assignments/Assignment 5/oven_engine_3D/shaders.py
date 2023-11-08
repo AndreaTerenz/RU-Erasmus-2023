@@ -327,7 +327,7 @@ class MeshShader(BaseShader):
         ALPHA_BLEND = 2
 
     def __init__(self, diffuse_texture : [int|str] = "", specular_texture : [int|str] = "",
-                 material_params=None, ignore_camera_pos=False, **kwargs):
+                 material_params=None, **kwargs):
         def load_texture_from_id(input_id: [int|str]):
             if type(input_id) is int and input_id >= 0:
                 return input_id
@@ -335,7 +335,6 @@ class MeshShader(BaseShader):
                 return TexturesManager.load_texture(input_id, filtering=GL_LINEAR)
             return 0
 
-        self.ignore_camera_pos = ignore_camera_pos
         self.diff_tex_id = load_texture_from_id(diffuse_texture)
         self.spec_tex_id = load_texture_from_id(specular_texture)
 
@@ -365,7 +364,7 @@ class MeshShader(BaseShader):
         print("Shader variation:\n\t", end="")
         print(*kwargs.items(), sep="\n\t")
 
-        p = kwargs.get("params", {})
+        p = {k:p for k,p in kwargs.items() if not k in ["diffuse_texture", "specular_texture"]} #.get("material_params", {})
         add_missing(p, self.material_params)
 
         return MeshShader(

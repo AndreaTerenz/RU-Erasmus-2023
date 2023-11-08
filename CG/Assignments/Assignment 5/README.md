@@ -2,47 +2,55 @@
 
 Requires Python 3.11 or higher
 
-### To Do
+### How to use
 
-- [x] ~~ACES Tonemapping~~
-  - [x] ~~select [multiple tonemapping operators](https://64.github.io/tonemapping)~~
-- [x] ~~Fog~~
-- [x] ~~[Skybox](https://learnopengl.com/Advanced-OpenGL/Cubemaps)~~
-  - [x] ~~Split shader back into "BaseShader" and "MeshShader"~~ (to make the SkyShader a separate subclass)
-  - [ ] Compute global ambient color from skybox
-  - [ ] Skybox rotation
-  - [ ] Add exposure parameter
-- [ ] Use buffer indices instead of having to repeat vertex data for position, normal, uv, etc... 
-- [ ] Code to generate additional meshes
-  - [x] ~~Sphere~~
-    - [ ] Icosphere
-    - [ ] Cubesphere
-  - [ ] Torus
-  - [ ] Cylinder/Prysm (also counts for cone if you allow different radius for top & bottom)
-  - [ ] Subdivided plane
-- [ ] Light types
-  - [ ] Directional
-  - [ ] Spotlight (maybe...)
-- [ ] More textures in shader
-  - [x] ~~Specular map~~
-  - [ ] Normal map
-- [ ] Mesh Loading
-  - [x] ~~Mesh are loaded~~
-  - [ ] Parse vertex format and act accordingly
-  - [ ] Parse material
-  - [ ] There's some rotation mismatch....
-- [x] ~~UV coordinates in vbo~~
-- [x] ~~Find out why face culling is broken~~
-- [x] ~~TEXTURES!!!!~~
-- [x] ~~Blending & transparency~~
-- [x] ~~UV scale & offset~~
-- [x] ~~Custom shader code injection~~
-- [ ] Bezier splines for smooth movement
-  - [x] ~~Basic implementation~~
-  - [ ] Make object (optionally) point in direction of movement
+WASD controls + mouse for first person movement/look
 
-### To do in theory but would probably take too long
+Use LeftShift/LeftCtrl to move up/down
 
-- [ ] Shadows?
-  - [ ] hard shadows from a single directional light
-  - [ ] self shadowing in objects
+### What's present (of note)
+
+- Tonemapping (with different operators to choose from)
+- Fog (can be linear, exponential or exponential squared)
+- Skybox
+- Generated meshes
+  - Sphere
+  - Cube
+  - Plane
+- Optional specular mapping in shaders
+- Multiple lights support (arbitrary maximum of 4)
+- Mesh loading from OBJ
+- Texturing
+- Blending & transparency support (both with actual blending and with simple alpha scissor)
+- UV scaling/offset
+- Ability to inject code into the standard shader (allows to easily create new effects without having to always duplicate common code)
+- Smooth movement along Bezier splines
+- and more...
+
+![](https://i.imgur.com/9CxHbVB.png)
+
+### What I'd like to have added
+
+- More skybox features
+  - Compute global ambient color from skybox
+  - Skybox rotation
+  - Add exposure parameter
+- Use buffer indices instead of having to repeat vertex data for position, normal, uv, etc... 
+- Code to generate additional meshes
+  - More spheres
+    - Icosphere
+    - Cubesphere
+  - Torus
+  - Cylinder/Prysm (also counts for cone if you allow different radius for top & bottom)
+  - Subdivided plane
+- Light types
+  - Directional
+  - Spotligh
+- Normal maps
+- Improved mesh loading
+  - Parse vertex format and act accordingly instead of assuming it has Positions THEN Normals THEN UVs
+  - Parse material
+  - Optionally reset model position when importing
+- Make object point in direction of Bezier curve
+- Sprites & billboards
+- Shadows (never actually attempted, maybe just directional)

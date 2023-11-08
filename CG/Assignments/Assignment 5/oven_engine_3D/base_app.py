@@ -90,6 +90,8 @@ class BaseApp3D(ABC):
         else:
             self.opaque.append(ent)
 
+        return ent
+
     def _update(self):
         delta = self.clock.tick(self.target_fps) / 1000.0
         self.ticks += 1

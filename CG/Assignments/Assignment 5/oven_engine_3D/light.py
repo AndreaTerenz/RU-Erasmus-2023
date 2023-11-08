@@ -6,7 +6,7 @@ from oven_engine_3D.utils.geometry import Vector3D
 BASE_INTENSITY = 2.
 
 class Light(Entity):
-    def __init__(self, parent_app, position, color, radius=0.,
+    def __init__(self, parent_app, position=Vector3D.ZERO, color="white", radius=0.,
                  ambient_color="black", intensity=1., attenuation=(1., .2, 0.)):
         super().__init__(parent_app, origin=position)
 

@@ -7,8 +7,9 @@ from game_entities import Player
 from oven_engine_3D.base_app import BaseApp3D
 from oven_engine_3D.entities import Plane, DrawnEntity, Cube, Sphere
 from oven_engine_3D.environment import Environment
+from oven_engine_3D.light import Light
 from oven_engine_3D.shaders import MeshShader, CustomMeshShader
-from oven_engine_3D.utils.bezier import BezierPoint, BezierCurve
+from oven_engine_3D.utils.bezier import BezierCurve, BezierPoint
 from oven_engine_3D.utils.geometry import Vector3D, Vector2D
 from oven_engine_3D.utils.textures import TexturesManager
 
@@ -28,68 +29,116 @@ class Assignment5(BaseApp3D):
                          },
                          environment=Environment(
                              #global_ambient=Color(114, 230, 232),
-                             fog_mode=Environment.FogMode.DISABLED, fog_density=.05,
+                             fog_mode=Environment.FogMode.EXP, fog_density=.015,
                              tonemap=Environment.Tonemapping.ACES
                          ))
 
         ratio = self.win_size.aspect_ratio
-        self.player = Player(self, rot_y=math.tau/4., height=0.,
+        self.player = Player(self, height=0.,
                              camera_params={"ratio": ratio, "fov": math.tau/6., "near": .1, "far": 80.})
 
         self.camera = self.player.camera
-        self.lights.append(self.player.light)
+        self.lights.append(Light(self, intensity=.2, radius=0.))
         self.add_entity(self.player)
 
-        plane_mat = CustomMeshShader(injected_vert="shaders/injected/pulse.vert",
-                                     diffuse_texture="res/textures/uvgrid.jpg",
+        plane_mat = MeshShader(diffuse_texture="res/textures/uvgrid.jpg",
                                      material_params={"uv_scale": Vector2D.ONE})
         self.add_entity(Plane(self, origin=Vector3D.DOWN * 5., scale=30., shader=plane_mat))
 
-        mat1 = MeshShader(#specular_texture="res/textures/crate/crate_spec.png",
-                          diffuse_texture="res/textures/crate/crate_diff.png",
-                          material_params={
-                              "shininess": 256.,
-                          })
-        mat2 = mat1.variation(diffuse_texture="", specular_texture="", params={"diffuse_color": "red", "shininess": 10.})
-        mat3 = mat2.variation(params={"diffuse_color": "yellow"})
-
-        self.add_entity(Cube(parent_app=self, shader=mat1, origin=Vector3D.FORWARD * 3.))
-
-        self.add_entity(DrawnEntity(mesh="res/models/bunny.obj", parent_app=self, origin=Vector3D.FORWARD * 7., shader=mat3))
-
-        map_mat = CustomMeshShader(injected_frag="shaders/injected/rotation.frag", diffuse_texture="res/textures/map.jpg")
-        moon_mat = map_mat.variation(diffuse_texture="res/textures/map_moon.jpg")
-        self.add_entity(Sphere(parent_app=self, origin=Vector3D.BACKWARD * 10., shader=map_mat, scale=2.))
-        self.add_entity(
-            Sphere(parent_app=self, origin=Vector3D.BACKWARD * 10. + Vector3D.RIGHT * 5., shader=moon_mat, scale=.5))
+        ########### TRANSPARENCY
+        tmp = Vector3D.FORWARD * 8. + Vector3D.LEFT * 4.
 
         grass_tex = TexturesManager.load_texture("res/textures/grass_transp.png", clamping=GL_CLAMP_TO_EDGE)
-        mat_grass = MeshShader(diffuse_texture=grass_tex, material_params={"transparency_mode": MeshShader.TransparencyMode.ALPHA_BLEND})
-        self.add_entity(Plane(self, origin=Vector3D.BACKWARD * 2., normal=Vector3D.BACKWARD, shader=mat_grass, up_rotation=-math.tau/4.))
+        mat_grass = MeshShader(diffuse_texture=grass_tex,
+                               material_params={"transparency_mode": MeshShader.TransparencyMode.ALPHA_DISCARD})
+        self.add_entity(Plane(self, origin=tmp, normal=Vector3D.FORWARD, shader=mat_grass,
+                              up_rotation=-math.tau / 4.))
+        self.add_entity(Plane(self, origin=tmp + Vector3D.FORWARD + Vector3D.LEFT, normal=Vector3D.FORWARD, shader=mat_grass,
+                              up_rotation=-math.tau / 4.))
+        self.add_entity(Plane(self, origin=tmp + Vector3D.FORWARD + Vector3D.RIGHT, normal=Vector3D.FORWARD, shader=mat_grass,
+                              up_rotation=-math.tau / 4.))
 
         window_tex = TexturesManager.load_texture("res/textures/window_semitransp.png", clamping=GL_CLAMP_TO_EDGE)
-        mat_window = MeshShader(diffuse_texture=window_tex, material_params={"transparency_mode": MeshShader.TransparencyMode.ALPHA_BLEND})
-        self.add_entity(Plane(self, origin=Vector3D.BACKWARD * 2. + Vector3D.LEFT, normal=Vector3D.LEFT, shader=mat_window))
-        self.add_entity(Plane(self, origin=Vector3D.BACKWARD * 2. + Vector3D.RIGHT, normal=Vector3D.RIGHT, shader=mat_window))
-        self.add_entity(Plane(self, origin=Vector3D.BACKWARD, normal=Vector3D.BACKWARD, shader=mat_window))
+        mat_window = MeshShader(diffuse_texture=window_tex,
+                                material_params={"transparency_mode": MeshShader.TransparencyMode.ALPHA_BLEND})
+        self.add_entity(
+            Plane(self, origin=tmp + Vector3D.BACKWARD, normal=Vector3D.FORWARD, shader=mat_window))
+        self.add_entity(
+            Plane(self, origin=tmp + Vector3D.BACKWARD + Vector3D.LEFT * 2., normal=Vector3D.FORWARD, shader=mat_window))
+        self.add_entity(
+            Plane(self, origin=tmp + Vector3D.BACKWARD + Vector3D.RIGHT * 2., normal=Vector3D.FORWARD, shader=mat_window))
+        mat_window2 = mat_window.variation(diffuse_color = "cyan")
+        self.add_entity(
+            Plane(self, origin=tmp + Vector3D.FORWARD * 2. + Vector3D.RIGHT * 2., normal=Vector3D.FORWARD, shader=mat_window2))
+        self.add_entity(
+            Plane(self, origin=tmp + Vector3D.FORWARD * 2. + Vector3D.LEFT * 2., normal=Vector3D.FORWARD, shader=mat_window2))
+        ##############################
 
-        test = CustomMeshShader(injected_frag="shaders/injected/funky.frag", diffuse_texture="res/textures/window_semitransp.png")
-        self.add_entity(Cube(self, origin=Vector3D.LEFT * 8., shader=test))
+        ########### SPECULAR MAP
+        tmp = Vector3D.FORWARD * 8. + Vector3D.RIGHT * 2.
 
+        mat_crate1 = MeshShader(diffuse_texture="res/textures/img1.png",
+                                material_params={"shininess": 256.,})
+        self.add_entity(Cube(parent_app=self, shader=mat_crate1, origin=tmp))
+        mat_crate2 = mat_crate1.variation(specular_texture="intentionallywrongpath.png")
+        self.add_entity(Cube(parent_app=self, shader=mat_crate2, origin=tmp + Vector3D.RIGHT * 3.))
+
+        self.lights.append(Light(self, position=tmp + Vector3D.RIGHT * 1.5 + Vector3D.BACKWARD * 2., radius=3., intensity=15., color="green"))
+        light_cube_mat = MeshShader(material_params={"unshaded" : True, "diffuse_color":"green"})
+        self.add_entity(Cube(self, origin=self.lights[-1].origin, scale=.1, shader=light_cube_mat))
+        ##############################
+
+        ####### CUSTOM SHADERS
+        tmp = Vector3D.RIGHT * 8.
+
+        mat_funky = CustomMeshShader(injected_vert="shaders/injected/vert_warp.vert",
+                                    injected_frag="shaders/injected/funky.frag",
+                                diffuse_texture="res/textures/window_semitransp.png")
+        self.add_entity(Cube(self, origin=tmp + Vector3D.FORWARD * 5., shader=mat_funky))
+
+        map_mat = CustomMeshShader(injected_frag="shaders/injected/rotation.frag",
+                                   diffuse_texture="res/textures/map.jpg")
+        self.add_entity(Sphere(parent_app=self, origin=tmp, shader=map_mat, scale=2.))
+        ##############################
+
+        ###### OBJ LOADING
+        tmp = Vector3D.LEFT * 8.
+
+        mat_bunny = MeshShader(material_params={"diffuse_color": "yellow"})
+        self.add_entity(DrawnEntity(mesh="res/models/bunny.obj", parent_app=self, origin=tmp, rotation=Vector3D.UP * -math.tau/4.,shader=mat_bunny))
+        mat_teapot = mat_bunny.variation(diffuse_color="red")
+        self.add_entity(
+            DrawnEntity(mesh="res/models/teapot.obj", parent_app=self, origin=tmp + Vector3D.FORWARD * 3. + Vector3D.DOWN,
+                        rotation=Vector3D.UP * math.tau / 4., scale=.5, shader=mat_teapot))
+        ##############################
+
+        ###### MULTIPLE LIGHTS
+        tmp = Vector3D.LEFT * 8. + Vector3D.BACKWARD * 4.
+
+        self.add_entity(DrawnEntity(self, mesh="res/models/monke.obj", origin=tmp, rotation=Vector3D.UP*math.tau/4.))
+        self.add_entity(Cube(self, origin = tmp + Vector3D.DOWN * 2., scale=Vector3D(3., .2, 3.), color="gray"))
+        self.lights.append(Light(self, position=tmp + Vector3D.BACKWARD * 1.5, color="red", radius=3., intensity=20.))
+        self.add_entity(Cube(self, origin=self.lights[-1].origin, scale=.1, shader=light_cube_mat.variation(diffuse_color="red")))
+        self.lights.append(Light(self, position=tmp - Vector3D.BACKWARD * 1.5, color="cyan", radius=3., intensity=20.))
+        self.add_entity(Cube(self, origin=self.lights[-1].origin, scale=.1, shader=light_cube_mat.variation(diffuse_color="cyan")))
+
+        ##############################
+
+        ###### BEZIER
+        tmp = Vector3D.RIGHT * 8. + Vector3D.BACKWARD * 4.
+        self.bezier_start = tmp
         self.bezier_test = BezierCurve([BezierPoint(Vector3D.ZERO, Vector3D.BACKWARD),
                                         BezierPoint(Vector3D(0., 1., -1.) * 4., Vector3D.FORWARD),
                                         BezierPoint(Vector3D(0., 0., -2.) * 4., Vector3D.FORWARD),],
                                        loop_mode=BezierCurve.LoopMode.LOOP)
-
-        self.teapot_start = Vector3D.RIGHT * 5.
-        self.teapot_last_pos = self.teapot_start
-        self.teapot = DrawnEntity(mesh="res/models/teapot.obj", parent_app=self, origin=Vector3D.RIGHT * 5., shader=mat2)
-        self.add_entity(self.teapot)
+        self.bezier_cube = self.add_entity(Cube(self, origin=self.bezier_start, scale=.4))
+        ##############################
 
     def update(self, delta):
         if not self.bezier_test.done:
             pos, _dir = self.bezier_test.interpolate_next(delta * .2)
-            self.teapot.translate_to(pos + self.teapot_start)
+            self.bezier_cube.translate_to(pos + self.bezier_start)
+        pass
 
     def display(self):
         pass

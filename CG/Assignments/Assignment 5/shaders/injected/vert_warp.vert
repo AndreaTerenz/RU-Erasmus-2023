@@ -1,7 +1,7 @@
 vec4 get_position(vec4 pos)
 {
-	float dir = (pos.z > 0.) ? 1. : -1;
-	float fac = 6. * sin(u_time * 15.) * dir;
+	float dir = (pos.y > 0.) ? 1. : -1;
+	float fac = 2. * sin(u_time * 15.) * dir;
 
 	return pos + vec4(fac, 0., 0., 0.);
 }

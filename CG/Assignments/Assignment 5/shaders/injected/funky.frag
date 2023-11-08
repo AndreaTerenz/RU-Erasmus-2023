@@ -20,6 +20,7 @@ vec4 get_base_diffuse()
 {
 	vec4 tex_color = (u_material.use_diff_texture) ? texture(u_material.diffuse_tex, v_uv) : WHITE;
 	vec3 col = (u_material.diffuse_color * tex_color).rgb;
+	float alpha = (u_material.diffuse_color * tex_color).a;
 
 	vec3 tmp = rgb2hsv(col);
 
@@ -27,5 +28,5 @@ vec4 get_base_diffuse()
 
 	col = hsv2rgb(tmp);
 
-	return vec4(col, 1.);
+	return vec4(hsv2rgb(tmp), alpha);
 }
