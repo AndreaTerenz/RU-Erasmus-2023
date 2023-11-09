@@ -28,7 +28,10 @@ class Camera(Entity):
     def handle_event(self, ev):
         pass
 
-    def look_at(self, target, up=Vector3D.UP):
+    def look_at(self, target, up=Vector3D.UP, new_origin = None):
+        if new_origin is not None:
+            self.origin = new_origin
+
         self.view_matrix.look_at(self.origin, target, up)
 
     def slide(self, offset):

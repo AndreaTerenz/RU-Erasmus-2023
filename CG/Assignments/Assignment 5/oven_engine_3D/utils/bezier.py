@@ -1,6 +1,8 @@
 from enum import Enum
 from typing import Collection
 
+from oven_engine_3D.utils.geometry import Vector3D
+
 
 class BezierPoint:
     def __init__(self, position, handle):
@@ -27,6 +29,22 @@ class BezierCurve:
         # self.direction = 1.
         self.current_segment = 0
         self.done = False
+
+    @staticmethod
+    def from_file(src_file, loop_mode=LoopMode.NONE):
+        with open(src_file, "r") as f:
+            lines = f.readlines()
+
+        points = []
+        for line in lines:
+            if line.startswith("#"):
+                continue
+
+            data = line.split(" ")
+            points.append(BezierPoint(Vector3D(*[float(x) for x in data[:3]]),
+                                      Vector3D(*[float(x) for x in data[3:6]])))
+
+        return BezierCurve(points, loop_mode)
 
     def __getitem__(self, item):
         return self.points[item]

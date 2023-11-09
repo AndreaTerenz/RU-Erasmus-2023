@@ -1,15 +1,16 @@
 import math
 
+import pygame as pg
 from OpenGL.GL import GL_CLAMP_TO_EDGE
 from pygame import Color
 
-from game_entities import Player
 from oven_engine_3D.base_app import BaseApp3D
+from oven_engine_3D.camera import Camera
 from oven_engine_3D.entities import Plane, DrawnEntity, Cube, Sphere
 from oven_engine_3D.environment import Environment
 from oven_engine_3D.light import Light
 from oven_engine_3D.shaders import MeshShader, CustomMeshShader
-from oven_engine_3D.utils.bezier import BezierCurve, BezierPoint
+from oven_engine_3D.utils.bezier import BezierCurve
 from oven_engine_3D.utils.geometry import Vector3D, Vector2D
 from oven_engine_3D.utils.textures import TexturesManager
 
@@ -34,12 +35,14 @@ class Assignment5(BaseApp3D):
                          ))
 
         ratio = self.win_size.aspect_ratio
-        self.player = Player(self, height=0.,
-                             camera_params={"ratio": ratio, "fov": math.tau/6., "near": .1, "far": 80.})
+        """self.player = Player(self, height=0.,
+                             camera_params={"ratio": ratio, "fov": math.tau/6., "near": .1, "far": 80.})"""
 
-        self.camera = self.player.camera
+        # self.camera = self.player.camera
         self.lights.append(Light(self, intensity=.2, radius=0.))
-        self.add_entity(self.player)
+        # self.add_entity(self.player)
+        pg.mouse.set_visible(False)
+        pg.event.set_grab(True)
 
         plane_mat = MeshShader(diffuse_texture="res/textures/uvgrid.jpg",
                                      material_params={"uv_scale": Vector2D.ONE})
@@ -102,18 +105,14 @@ class Assignment5(BaseApp3D):
         ##############################
 
         ###### OBJ LOADING
-        tmp = Vector3D.LEFT * 8.
+        tmp = Vector3D.LEFT * 8. + Vector3D.FORWARD * 3.
 
         mat_bunny = MeshShader(material_params={"diffuse_color": "yellow"})
         self.add_entity(DrawnEntity(mesh="res/models/bunny.obj", parent_app=self, origin=tmp, rotation=Vector3D.UP * -math.tau/4.,shader=mat_bunny))
-        mat_teapot = mat_bunny.variation(diffuse_color="red")
-        self.add_entity(
-            DrawnEntity(mesh="res/models/teapot.obj", parent_app=self, origin=tmp + Vector3D.FORWARD * 3. + Vector3D.DOWN,
-                        rotation=Vector3D.UP * math.tau / 4., scale=.5, shader=mat_teapot))
         ##############################
 
         ###### MULTIPLE LIGHTS
-        tmp = Vector3D.LEFT * 8. + Vector3D.BACKWARD * 4.
+        tmp = Vector3D.LEFT * 8. + Vector3D.BACKWARD * 2.
 
         self.add_entity(DrawnEntity(self, mesh="res/models/monke.obj", origin=tmp, rotation=Vector3D.UP*math.tau/4.))
         self.add_entity(Cube(self, origin = tmp + Vector3D.DOWN * 2., scale=Vector3D(3., .2, 3.), color="gray"))
@@ -121,24 +120,23 @@ class Assignment5(BaseApp3D):
         self.add_entity(Cube(self, origin=self.lights[-1].origin, scale=.1, shader=light_cube_mat.variation(diffuse_color="red")))
         self.lights.append(Light(self, position=tmp - Vector3D.BACKWARD * 1.5, color="cyan", radius=3., intensity=20.))
         self.add_entity(Cube(self, origin=self.lights[-1].origin, scale=.1, shader=light_cube_mat.variation(diffuse_color="cyan")))
-
         ##############################
 
         ###### BEZIER
         tmp = Vector3D.RIGHT * 8. + Vector3D.BACKWARD * 4.
-        self.bezier_start = tmp
-        self.bezier_test = BezierCurve([BezierPoint(Vector3D.ZERO, Vector3D.BACKWARD),
-                                        BezierPoint(Vector3D(0., 1., -1.) * 4., Vector3D.FORWARD),
-                                        BezierPoint(Vector3D(0., 0., -2.) * 4., Vector3D.FORWARD),],
-                                       loop_mode=BezierCurve.LoopMode.LOOP)
-        self.bezier_cube = self.add_entity(Cube(self, origin=self.bezier_start, scale=.4))
+        self.bezier_camera_start = tmp
+
+        self.bezier1 = BezierCurve.from_file("test.bezier", loop_mode=BezierCurve.LoopMode.LOOP)
+
+        #self.bezier_cube = self.add_entity(Cube(self, scale=.1))
+        self.camera = Camera(self, eye=Vector3D.UP * 9., look_at=Vector3D.FORWARD * .001, fov=math.tau/6.)
         ##############################
 
     def update(self, delta):
-        if not self.bezier_test.done:
-            pos, _dir = self.bezier_test.interpolate_next(delta * .2)
-            self.bezier_cube.translate_to(pos + self.bezier_start)
-        pass
+        if not self.bezier1.done:
+            pos1, _dir = self.bezier1.interpolate_next(delta * .1)
+            #self.bezier_cube.translate_to(pos1)
+            self.camera.look_at(pos1, new_origin=pos1 * .8)# + Vector3D.LEFT * .5)
 
     def display(self):
         pass
