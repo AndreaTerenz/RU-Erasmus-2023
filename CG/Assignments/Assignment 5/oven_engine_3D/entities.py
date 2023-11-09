@@ -4,7 +4,9 @@ import shortuuid
 from OpenGL.GL import *
 
 from oven_engine_3D.meshes import CubeMesh, PlaneMesh, Mesh, OBJMesh, SphereMesh
-from oven_engine_3D.shaders import MeshShader, SkyboxShader
+from oven_engine_3D.shaders.mesh import MeshShader
+from oven_engine_3D.shaders.skybox import SkyboxShader
+# from oven_engine_3D.shaders import MeshShader, SkyboxShader
 from oven_engine_3D.utils.geometry import Vector3D, euler_from_vectors
 from oven_engine_3D.utils.matrices import ModelMatrix
 

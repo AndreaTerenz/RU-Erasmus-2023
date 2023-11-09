@@ -1,4 +1,11 @@
+import ctypes
+
 from pygame.locals import *
+
+from oven_engine_3D.environment import Environment
+from oven_engine_3D.utils.textures import TexturesManager
+
+ctypes.windll.user32.SetProcessDPIAware()
 
 from oven_engine_3D.camera import *
 from oven_engine_3D.entities import Skybox, DrawnEntity
@@ -9,7 +16,7 @@ from oven_engine_3D.utils.geometry import Vector2D
 class BaseApp3D(ABC):
     def __init__(self,
                  win_title   = "BaseApp",
-                 win_size    = Vector2D(800,600),
+                 win_size    = Vector2D.ZERO,
                  clear_color = "black",
                  fullscreen  = True,
                  ambient_color = None,
@@ -17,6 +24,7 @@ class BaseApp3D(ABC):
                  face_culling = True,
                  environment : Environment = None,
                  sky_textures = None,
+                 vsync = False
                  ):
 
         pg.init()
@@ -82,13 +90,11 @@ class BaseApp3D(ABC):
     def add_entity(self, ent: Entity):
         self.entities.append(ent)
 
-        if not isinstance(ent, DrawnEntity):
-            return
-
-        if ent.shader.transparent:
-            self.transparent.append(ent)
-        else:
-            self.opaque.append(ent)
+        if isinstance(ent, DrawnEntity):
+            if ent.shader.transparent:
+                self.transparent.append(ent)
+            else:
+                self.opaque.append(ent)
 
         return ent
 

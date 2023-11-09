@@ -4,13 +4,12 @@ import pygame as pg
 from OpenGL.GL import GL_CLAMP_TO_EDGE
 from pygame import Color
 
-from game_entities import Player
 from oven_engine_3D.base_app import BaseApp3D
-from oven_engine_3D.camera import Camera
+from oven_engine_3D.camera import Camera, FPCamera
 from oven_engine_3D.entities import Plane, DrawnEntity, Cube, Sphere
 from oven_engine_3D.environment import Environment
 from oven_engine_3D.light import Light
-from oven_engine_3D.shaders import MeshShader
+from oven_engine_3D.shaders.mesh import MeshShader
 from oven_engine_3D.utils.bezier import BezierCurve
 from oven_engine_3D.utils.geometry import Vector3D, Vector2D
 from oven_engine_3D.utils.textures import TexturesManager
@@ -19,6 +18,7 @@ from oven_engine_3D.utils.textures import TexturesManager
 class Assignment5(BaseApp3D):
     def __init__(self):
         super().__init__(fullscreen=True, ambient_color="white",
+                         win_size = Vector2D(1280, 720),
                          clear_color=Color(30, 30, 30), update_camera=False,
                          sky_textures={
                              "px" : "px.jpg",
@@ -36,17 +36,12 @@ class Assignment5(BaseApp3D):
                          ))
 
         ratio = self.win_size.aspect_ratio
-        """self.player = Player(self, height=0.,
-                             camera_params={"ratio": ratio, "fov": math.tau/6., "near": .1, "far": 80.})"""
 
-        # self.camera = self.player.camera
         self.lights.append(Light(self, intensity=.2, radius=0.))
-        # self.add_entity(self.player)
         pg.mouse.set_visible(False)
         pg.event.set_grab(True)
 
-        plane_mat = MeshShader(diffuse_texture="res/textures/uvgrid.jpg",
-                                     material_params={"uv_scale": Vector2D.ONE})
+        plane_mat = MeshShader(diffuse_texture="res/textures/uvgrid.jpg", uv_scale = Vector2D.ONE * 10.)
         self.add_entity(Plane(self, origin=Vector3D.DOWN * 5., scale=30., shader=plane_mat))
 
         ########### TRANSPARENCY
@@ -54,7 +49,7 @@ class Assignment5(BaseApp3D):
 
         grass_tex = TexturesManager.load_texture("res/textures/grass_transp.png", clamping=GL_CLAMP_TO_EDGE)
         mat_grass = MeshShader(diffuse_texture=grass_tex,
-                               material_params={"transparency_mode": MeshShader.TransparencyMode.ALPHA_DISCARD})
+                               transparency_mode= MeshShader.TransparencyMode.ALPHA_DISCARD)
         self.add_entity(Plane(self, origin=tmp, normal=Vector3D.FORWARD, shader=mat_grass,
                               up_rotation=-math.tau / 4.))
         self.add_entity(Plane(self, origin=tmp + Vector3D.FORWARD + Vector3D.LEFT, normal=Vector3D.FORWARD, shader=mat_grass,
@@ -64,7 +59,7 @@ class Assignment5(BaseApp3D):
 
         window_tex = TexturesManager.load_texture("res/textures/window_semitransp.png", clamping=GL_CLAMP_TO_EDGE)
         mat_window = MeshShader(diffuse_texture=window_tex,
-                                material_params={"transparency_mode": MeshShader.TransparencyMode.ALPHA_BLEND})
+                                transparency_mode=MeshShader.TransparencyMode.ALPHA_BLEND)
         self.add_entity(
             Plane(self, origin=tmp + Vector3D.BACKWARD, normal=Vector3D.FORWARD, shader=mat_window))
         self.add_entity(
@@ -82,13 +77,13 @@ class Assignment5(BaseApp3D):
         tmp = Vector3D.FORWARD * 8. + Vector3D.RIGHT * 2.
 
         mat_crate1 = MeshShader(diffuse_texture="res/textures/img1.png",
-                                material_params={"shininess": 128.,})
+                                shininess = 128.)
         self.add_entity(Cube(parent_app=self, shader=mat_crate1, origin=tmp))
         mat_crate2 = mat_crate1.variation(specular_texture="intentionallywrongpath.png")
         self.add_entity(Cube(parent_app=self, shader=mat_crate2, origin=tmp + Vector3D.RIGHT * 2.2))
 
         self.lights.append(Light(self, position=tmp + Vector3D.RIGHT * 1.5 + Vector3D.BACKWARD * 2., radius=3., intensity=15., color="green"))
-        light_cube_mat = MeshShader(material_params={"unshaded" : True, "diffuse_color":"green"})
+        light_cube_mat = MeshShader(unshaded=True, diffuse_color = "green")
         self.add_entity(Cube(self, origin=self.lights[-1].origin, scale=.1, shader=light_cube_mat))
         ##############################
 
@@ -108,7 +103,7 @@ class Assignment5(BaseApp3D):
         ###### OBJ LOADING
         tmp = Vector3D.LEFT * 8. + Vector3D.FORWARD * 3.
 
-        mat_bunny = MeshShader(material_params={"diffuse_color": "yellow"})
+        mat_bunny = MeshShader(diffuse_color = "yellow")
         self.add_entity(DrawnEntity(mesh="res/models/bunny.obj", parent_app=self,
                                     origin=tmp, rotation=Vector3D.UP * -math.tau/4.,shader=mat_bunny))
         ##############################
@@ -129,17 +124,18 @@ class Assignment5(BaseApp3D):
         self.bezier_camera_start = tmp
 
         self.bezier1 = BezierCurve.from_file("test.bezier", loop_mode=BezierCurve.LoopMode.LOOP)
-
-        self.camera = Camera(self, eye=Vector3D.UP * 6. + Vector3D.BACKWARD * 14.,
-                             look_at=Vector3D.FORWARD * .001, fov=math.tau/6.)
         ##############################
 
-        if True:
-            self.player = Player(self, height=0.,
-                                 camera_params={"ratio": ratio, "fov": math.tau/6., "near": .1, "far": 80.})
+        self.animate = True
+        if not self.animate:
+            camera_params = {"ratio": ratio, "fov": math.tau / 6., "near": .1, "far": 80.}
+            self.camera = self.add_entity(FPCamera(self, look_at=Vector3D.FORWARD, sensitivity=80., **camera_params))
+        else:
+            self.camera = Camera(self, eye=Vector3D.UP * 6. + Vector3D.BACKWARD * 14.,
+                                 look_at=Vector3D.FORWARD * .001, fov=math.tau / 6.)
 
     def update(self, delta):
-        if not self.bezier1.done:
+        if self.animate and not self.bezier1.done:
             pos1, _dir = self.bezier1.interpolate_next(delta * .1)
             self.camera.look_at(pos1, new_origin=pos1 * .8)
 

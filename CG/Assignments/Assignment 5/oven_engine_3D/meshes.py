@@ -259,34 +259,3 @@ class OBJMesh(Mesh):
         OBJMesh.loaded[file_name] = mesh
 
         return mesh
-
-if __name__ == '__main__':
-    scene = pwf.Wavefront('../res/models/cylinder.obj', collect_faces=True)
-
-    print(*scene.mesh_list[0].__dict__.items(), sep="\n")
-    print()
-    print(*scene.mesh_list[0].materials[0].__dict__.items(), sep="\n")
-    print(scene.mesh_list[0].materials[0].vertex_format)
-
-
-    """# Iterate vertex data collected in each material
-    for name, material in scene.materials.items():
-        print(name)
-        # Contains the vertex format (string) such as "T2F_N3F_V3F"
-        # T2F, C3F, N3F and V3F may appear in this string
-        print(material.vertex_format)
-        verts = material.vertices
-        verts = [verts[i:i + 8] for i in range(0, len(verts), 8)]
-        verts = [[(v[0], v[1]), (v[2], v[3], v[4]), (v[5], v[6], v[7])] for v in verts]
-        verts = [[v[2], v[1], v[0]] for v in verts]
-
-        print(len(verts))
-        print(*verts, sep="\n")"""
-
-
-        # Contains the vertex list of floats in the format described above
-        #print(material.vertices)
-        # Material properties
-        #material.diffuse
-        #material.ambient
-        #material.texture

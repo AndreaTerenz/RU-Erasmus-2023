@@ -36,5 +36,4 @@ void main(void)
 	v_pos = get_position(u_model_matrix * vec4((a_position), 1.0));
 
 	gl_Position = u_projection_matrix * (u_view_matrix * v_pos);
-
 }
