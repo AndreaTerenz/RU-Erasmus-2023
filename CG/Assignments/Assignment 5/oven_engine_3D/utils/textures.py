@@ -15,6 +15,12 @@ class TexturesManager:
 
     @staticmethod
     def load_texture(path, filtering=GL_NEAREST, clamping=GL_REPEAT, color_format=GL_RGBA, pixel_format=GL_RGBA):
+        if type(path) is int:
+            return path
+
+        if path == "":
+            return 0
+
         print(f"Loading texture from '{path}'...", end="")
 
         if path in TexturesManager.textures.keys():

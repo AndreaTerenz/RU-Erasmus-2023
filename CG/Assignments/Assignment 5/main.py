@@ -4,12 +4,13 @@ import pygame as pg
 from OpenGL.GL import GL_CLAMP_TO_EDGE
 from pygame import Color
 
+from game_entities import Player
 from oven_engine_3D.base_app import BaseApp3D
 from oven_engine_3D.camera import Camera
 from oven_engine_3D.entities import Plane, DrawnEntity, Cube, Sphere
 from oven_engine_3D.environment import Environment
 from oven_engine_3D.light import Light
-from oven_engine_3D.shaders import MeshShader, CustomMeshShader
+from oven_engine_3D.shaders import MeshShader
 from oven_engine_3D.utils.bezier import BezierCurve
 from oven_engine_3D.utils.geometry import Vector3D, Vector2D
 from oven_engine_3D.utils.textures import TexturesManager
@@ -30,7 +31,7 @@ class Assignment5(BaseApp3D):
                          },
                          environment=Environment(
                              #global_ambient=Color(114, 230, 232),
-                             fog_mode=Environment.FogMode.EXP, fog_density=.01,
+                             fog_mode=Environment.FogMode.EXP, fog_density=.009,
                              tonemap=Environment.Tonemapping.ACES
                          ))
 
@@ -81,10 +82,10 @@ class Assignment5(BaseApp3D):
         tmp = Vector3D.FORWARD * 8. + Vector3D.RIGHT * 2.
 
         mat_crate1 = MeshShader(diffuse_texture="res/textures/img1.png",
-                                material_params={"shininess": 256.,})
+                                material_params={"shininess": 128.,})
         self.add_entity(Cube(parent_app=self, shader=mat_crate1, origin=tmp))
         mat_crate2 = mat_crate1.variation(specular_texture="intentionallywrongpath.png")
-        self.add_entity(Cube(parent_app=self, shader=mat_crate2, origin=tmp + Vector3D.RIGHT * 3.))
+        self.add_entity(Cube(parent_app=self, shader=mat_crate2, origin=tmp + Vector3D.RIGHT * 2.2))
 
         self.lights.append(Light(self, position=tmp + Vector3D.RIGHT * 1.5 + Vector3D.BACKWARD * 2., radius=3., intensity=15., color="green"))
         light_cube_mat = MeshShader(material_params={"unshaded" : True, "diffuse_color":"green"})
@@ -94,12 +95,12 @@ class Assignment5(BaseApp3D):
         ####### CUSTOM SHADERS
         tmp = Vector3D.RIGHT * 8.
 
-        mat_funky = CustomMeshShader(injected_vert="shaders/injected/vert_warp.vert",
+        mat_funky = MeshShader(injected_vert="shaders/injected/vert_warp.vert",
                                     injected_frag="shaders/injected/funky.frag",
                                 diffuse_texture="res/textures/window_semitransp.png")
         self.add_entity(Cube(self, origin=tmp + Vector3D.FORWARD * 5., shader=mat_funky))
 
-        map_mat = CustomMeshShader(injected_frag="shaders/injected/rotation.frag",
+        map_mat = MeshShader(injected_frag="shaders/injected/rotation.frag",
                                    diffuse_texture="res/textures/map.jpg")
         self.add_entity(Sphere(parent_app=self, origin=tmp, shader=map_mat, scale=2.))
         ##############################
@@ -108,7 +109,8 @@ class Assignment5(BaseApp3D):
         tmp = Vector3D.LEFT * 8. + Vector3D.FORWARD * 3.
 
         mat_bunny = MeshShader(material_params={"diffuse_color": "yellow"})
-        self.add_entity(DrawnEntity(mesh="res/models/bunny.obj", parent_app=self, origin=tmp, rotation=Vector3D.UP * -math.tau/4.,shader=mat_bunny))
+        self.add_entity(DrawnEntity(mesh="res/models/bunny.obj", parent_app=self,
+                                    origin=tmp, rotation=Vector3D.UP * -math.tau/4.,shader=mat_bunny))
         ##############################
 
         ###### MULTIPLE LIGHTS
@@ -128,15 +130,18 @@ class Assignment5(BaseApp3D):
 
         self.bezier1 = BezierCurve.from_file("test.bezier", loop_mode=BezierCurve.LoopMode.LOOP)
 
-        #self.bezier_cube = self.add_entity(Cube(self, scale=.1))
-        self.camera = Camera(self, eye=Vector3D.UP * 9., look_at=Vector3D.FORWARD * .001, fov=math.tau/6.)
+        self.camera = Camera(self, eye=Vector3D.UP * 6. + Vector3D.BACKWARD * 14.,
+                             look_at=Vector3D.FORWARD * .001, fov=math.tau/6.)
         ##############################
+
+        if True:
+            self.player = Player(self, height=0.,
+                                 camera_params={"ratio": ratio, "fov": math.tau/6., "near": .1, "far": 80.})
 
     def update(self, delta):
         if not self.bezier1.done:
             pos1, _dir = self.bezier1.interpolate_next(delta * .1)
-            #self.bezier_cube.translate_to(pos1)
-            self.camera.look_at(pos1, new_origin=pos1 * .8)# + Vector3D.LEFT * .5)
+            self.camera.look_at(pos1, new_origin=pos1 * .8)
 
     def display(self):
         pass

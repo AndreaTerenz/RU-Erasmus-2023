@@ -45,7 +45,11 @@ class BaseShader(ABC):
         def attrib_size(self):
             return self.elem_count * self.elem_size
 
-    def __init__(self, vert_shader_path, frag_shader_path, material_params=None, transparent=False, defer_compile=False, **kwargs):
+    def __init__(self, vert_shader_path, frag_shader_path, material_params=None, transparent=False, **kwargs):
+        self.vert_shader_path = vert_shader_path
+        self.frag_shader_path = frag_shader_path
+        self.renderingProgramID = MeshShader.get_shader_program(self.vert_shader_path, self.frag_shader_path)
+
         self.transparent = transparent
 
         self.uniform_locations = {}
@@ -59,14 +63,6 @@ class BaseShader(ABC):
 
         self.material_params = material_params
         add_missing(self.material_params, def_params)
-
-        self.vert_shader_path = vert_shader_path
-        self.frag_shader_path = frag_shader_path
-        self.renderingProgramID = 0
-
-        if not defer_compile:
-            # self.renderingProgramID = MeshShader.get_shader_program(self.vert_shader_path, self.frag_shader_path)
-            self.compile()
 
     def add_attribute(self, name, elem_count, dtype, atype):
         if atype in self.attributes:
@@ -86,8 +82,6 @@ class BaseShader(ABC):
     def compile(self):
         if self.compiled:
             return
-
-        self.renderingProgramID = MeshShader.get_shader_program(self.vert_shader_path, self.frag_shader_path)
         self.on_compile()
 
     @property
@@ -318,6 +312,8 @@ class BaseShader(ABC):
 
 
 class MeshShader(BaseShader):
+    INJECTION_BEGIN_ID = "//--INJECTION-BEGIN"
+    INJECTION_END_ID = "//--INJECTION-END"
     DEFAULT_VERTEX = os.path.join(DEFAULT_SHADER_DIR, "mesh.vert")
     DEFAULT_FRAG =  os.path.join(DEFAULT_SHADER_DIR, "mesh.frag")
 
@@ -327,27 +323,26 @@ class MeshShader(BaseShader):
         ALPHA_BLEND = 2
 
     def __init__(self, diffuse_texture : [int|str] = "", specular_texture : [int|str] = "",
-                 material_params=None, **kwargs):
-        def load_texture_from_id(input_id: [int|str]):
-            if type(input_id) is int and input_id >= 0:
-                return input_id
-            if type(input_id) is str and input_id != "":
-                return TexturesManager.load_texture(input_id, filtering=GL_LINEAR)
-            return 0
+                 material_params=None, injected_frag = "", injected_vert = "", **kwargs):
 
-        self.diff_tex_id = load_texture_from_id(diffuse_texture)
-        self.spec_tex_id = load_texture_from_id(specular_texture)
+        v_path=MeshShader.DEFAULT_VERTEX
+        f_path=MeshShader.DEFAULT_FRAG
+
+        if injected_vert != "":
+            v_path = MeshShader.inject_code(injected_vert, MeshShader.DEFAULT_VERTEX)
+        if injected_frag != "":
+            f_path = MeshShader.inject_code(injected_frag, MeshShader.DEFAULT_FRAG)
 
         super().__init__(material_params=material_params,
                          transparent=False,
-                         vert_shader_path=MeshShader.DEFAULT_VERTEX,
-                         frag_shader_path=MeshShader.DEFAULT_FRAG,
+                         vert_shader_path=v_path,
+                         frag_shader_path=f_path,
                          **kwargs)
 
+        self.diff_tex_id = TexturesManager.load_texture(diffuse_texture, filtering=GL_LINEAR)
+        self.spec_tex_id = TexturesManager.load_texture(specular_texture, filtering=GL_LINEAR)
         self.transparent = self.material_params["transparency_mode"] == MeshShader.TransparencyMode.ALPHA_BLEND
 
-
-    def on_compile(self):
         self.add_attribute("a_position", 3, GLfloat, BaseShader.POS_ATTRIB_ID)
         self.add_attribute("a_normal", 3, GLfloat, BaseShader.NORM_ATTRIB_ID)
         self.add_attribute("a_uv", 2, GLfloat, BaseShader.UV_ATTRIB_ID)
@@ -356,6 +351,38 @@ class MeshShader(BaseShader):
         self.set_diffuse_texture()
         self.set_specular_texture()
         self.set_material_uniforms()
+
+    @staticmethod
+    def inject_code(inject_source, inject_target):
+        with open(inject_source) as file:
+            injected_lines = file.readlines()
+
+        with open(inject_target) as file:
+            source_lines = file.readlines()
+
+        inj_start = source_lines.index(f"{MeshShader.INJECTION_BEGIN_ID}\n")
+        inj_end = source_lines.index(f"{MeshShader.INJECTION_END_ID}\n")
+
+        assert inj_start != -1 and inj_end != -1, "Unable to find injection points"
+
+        src_head = source_lines[:inj_start+1]
+        src_tail = source_lines[inj_end:]
+        source_lines = src_head + injected_lines + src_tail
+
+        # Write to temp file
+        if not os.path.exists("shaders/cache"):
+            os.makedirs("shaders/cache")
+
+        pure_injected_name = os.path.basename(inject_source)
+        pure_injected_name = os.path.splitext(pure_injected_name)[0]
+
+        tmp_file = f"shaders/cache/tmp_{pure_injected_name}"
+        open_mode = "w" if os.path.exists(tmp_file) else "x"
+
+        with open(tmp_file, open_mode) as file:
+            file.writelines(source_lines)
+
+        return tmp_file
 
     def duplicate(self):
         return self.variation()
@@ -473,8 +500,7 @@ class SkyboxShader(BaseShader):
 
         super().__init__(material_params=material_params,
                          vert_shader_path=SkyboxShader.SKY_VERTEX,
-                         frag_shader_path=SkyboxShader.SKY_FRAG,
-                         defer_compile=False)
+                         frag_shader_path=SkyboxShader.SKY_FRAG)
 
         self.sky_mesh = SkyboxMesh()
         self.cubemap_id = cubemap_id
@@ -530,52 +556,3 @@ class SkyboxShader(BaseShader):
         return {
             "rotation": math.tau/4.
         }
-
-class CustomMeshShader(MeshShader):
-    INJECTION_BEGIN_ID = "//--INJECTION-BEGIN"
-    INJECTION_END_ID = "//--INJECTION-END"
-
-    def __init__(self, injected_vert = "", injected_frag = "", **kwargs):
-        need_defer = (injected_vert != "" or injected_frag != "")
-
-        super().__init__(defer_compile=need_defer, **kwargs)
-
-        if need_defer:
-            if injected_vert != "":
-                self.vert_shader_path = CustomMeshShader.inject_code(injected_vert, MeshShader.DEFAULT_VERTEX)
-            if injected_frag != "":
-                self.frag_shader_path = CustomMeshShader.inject_code(injected_frag, MeshShader.DEFAULT_FRAG)
-
-            self.compile()
-
-    @staticmethod
-    def inject_code(inject_source, inject_target):
-        with open(inject_source) as file:
-            injected_lines = file.readlines()
-
-        with open(inject_target) as file:
-            source_lines = file.readlines()
-
-        inj_start = source_lines.index(f"{CustomMeshShader.INJECTION_BEGIN_ID}\n")
-        inj_end = source_lines.index(f"{CustomMeshShader.INJECTION_END_ID}\n")
-
-        assert inj_start != -1 and inj_end != -1, "Unable to find injection points"
-
-        src_head = source_lines[:inj_start+1]
-        src_tail = source_lines[inj_end:]
-        source_lines = src_head + injected_lines + src_tail
-
-        # Write to temp file
-        if not os.path.exists("shaders/cache"):
-            os.makedirs("shaders/cache")
-
-        pure_injected_name = os.path.basename(inject_source)
-        pure_injected_name = os.path.splitext(pure_injected_name)[0]
-
-        tmp_file = f"shaders/cache/tmp_{pure_injected_name}"
-        open_mode = "w" if os.path.exists(tmp_file) else "x"
-
-        with open(tmp_file, open_mode) as file:
-            file.writelines(source_lines)
-
-        return tmp_file

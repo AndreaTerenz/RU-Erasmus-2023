@@ -2,12 +2,6 @@
 
 Requires Python 3.11 or higher
 
-### How to use
-
-WASD controls + mouse for first person movement/look
-
-Use LeftShift/LeftCtrl to move up/down
-
 ### What's present (of note)
 
 - Tonemapping (with different operators to choose from)
@@ -27,7 +21,7 @@ Use LeftShift/LeftCtrl to move up/down
 - Smooth movement along Bezier splines
 - and more...
 
-![](https://i.imgur.com/9CxHbVB.png)
+![](demo2.png)
 
 ### What I'd like to have added
 
