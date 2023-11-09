@@ -154,11 +154,11 @@ class BaseApp3D(ABC):
         pg.quit()
 
     def _handle_events(self):
+        self.mouse_delta *= 0.
+        
         for event in pg.event.get():
             if self.check_quit(event):
                 return True
-
-            self.mouse_delta *= 0.
 
             if event.type in [pg.KEYDOWN, pg.KEYUP] and event.key in self.keys_states.keys():
                 self.keys_states[event.key] = (event.type == pg.KEYDOWN)

@@ -35,15 +35,15 @@ class Entity(ABC):
 
     @property
     def forward(self):
-        return self.to_global(Vector3D.FORWARD)
+        return self.to_global(Vector3D.FORWARD).normalized
 
     @property
     def right(self):
-        return self.to_global(Vector3D.RIGHT)
+        return self.to_global(Vector3D.RIGHT).normalized
 
     @property
     def up(self):
-        return self.to_global(Vector3D.UP)
+        return self.to_global(Vector3D.UP).normalized
 
     def translate_to(self, position: Vector3D):
         self.origin = position

@@ -29,7 +29,7 @@ class Assignment5(BaseApp3D):
                          },
                          environment=Environment(
                              #global_ambient=Color(114, 230, 232),
-                             fog_mode=Environment.FogMode.EXP, fog_density=.015,
+                             fog_mode=Environment.FogMode.EXP, fog_density=.01,
                              tonemap=Environment.Tonemapping.ACES
                          ))
 

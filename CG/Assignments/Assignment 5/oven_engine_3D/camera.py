@@ -17,7 +17,6 @@ class Camera(Entity):
 
         self.projection_matrix = ProjectionMatrix.perspective(fov, ratio, near=near, far=far)
         self.view_matrix = ViewMatrix()
-        self.target = Vector3D.ZERO
 
         look_at = eye + look_at if local_look_at else self.to_global(look_at)
 
@@ -30,12 +29,13 @@ class Camera(Entity):
         pass
 
     def look_at(self, target, up=Vector3D.UP):
-        self.target = target
         self.view_matrix.look_at(self.origin, target, up)
 
     def slide(self, offset):
-        self.target += offset
         self.view_matrix.slide(*offset)
+
+    def move_to(self, pos):
+        self.view_matrix.eye = pos
 
     def get_rot_angles(self):
         # Calculate the yaw (around global Z-axis) in radians
