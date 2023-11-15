@@ -6,7 +6,6 @@ import numpy as np
 from OpenGL.GL import *
 from OpenGL.GLU import *
 
-from oven_engine_3D.environment import Environment
 from oven_engine_3D.shaders import BaseShader, DEFAULT_SHADER_DIR, add_missing
 from oven_engine_3D.utils.geometry import Vector2D
 from oven_engine_3D.utils.textures import TexturesManager
@@ -126,7 +125,7 @@ class MeshShader(BaseShader):
 
         self.set_light_uniforms(app.lights)
         self.set_camera_uniforms(app.camera)
-        self.set_environment_uniforms(app.environment, app.global_ambient)
+        self.set_environment_uniforms(app.environment)
         self.set_skybox_texture(app.skybox.cubemap_id)
 
         time = np.float32(app.ticks / 1000.)
@@ -154,16 +153,15 @@ class MeshShader(BaseShader):
         self.set_uniform_matrix(camera.view_matrix.values, "u_view_matrix")
         self.set_uniform_vec3D(camera.view_matrix.eye, "u_camera_position")
 
-    def set_environment_uniforms(self, env: Environment, app_glob_ambient):
-        self.set_uniform_color(app_glob_ambient, "u_env.global_ambient")
-        self.set_uniform_float(env.ambient_color_strength, "u_env.ambient_strength")
-
+    def set_environment_uniforms(self, env: "Environment"):
+        self.set_uniform_color(env.global_ambient, "u_env.global_ambient")
+        self.set_uniform_float(env.global_ambient_strength, "u_env.ambient_strength")
         self.set_uniform_color(env.fog_color, "u_env.fog_color")
         self.set_uniform_float(env.start_fog, "u_env.start_fog")
         self.set_uniform_float(env.end_fog, "u_env.end_fog")
         self.set_uniform_float(env.fog_density, "u_env.fog_density")
-        self.set_uniform_int(env.fog_mode.value, "u_env.fog_mode")
-        self.set_uniform_int(env.tonemap.value, "u_env.tonemap_mode")
+        self.set_uniform_int  (env.fog_mode.value, "u_env.fog_mode")
+        self.set_uniform_int  (env.tonemap.value, "u_env.tonemap_mode")
 
     def set_light_uniforms(self, lights: ["Light" | Collection]):
         if not isinstance(lights, Collection):

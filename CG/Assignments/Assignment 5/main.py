@@ -22,18 +22,18 @@ class Assignment5(BaseApp3D):
                          win_size = Vector2D(1280, 720),
                          clear_color=Color(30, 30, 30), update_camera=False,
                          sky_textures={
-                             "folder" : "res\\textures\\skyes\\desert_day",
+                             "folder": "res\\textures\\skyes\\desert_day",
                              "ext": "png"
                          },
                          environment=Environment(
-                             ambient_color_strength=.8,
+                             global_ambient_strength=.8,
                              fog_mode=Environment.FogMode.EXP, fog_density=.009,
-                             tonemap=Environment.Tonemapping.ACES
+                             tonemap=Environment.Tonemapping.ACES,
                          ))
 
         ratio = self.win_size.aspect_ratio
 
-        self.lights.append(Light(self, intensity=.2, radius=0.))
+        #self.lights.append(Light(self, intensity=.2, radius=0.))
         pg.mouse.set_visible(False)
         pg.event.set_grab(True)
 

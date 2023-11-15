@@ -6,7 +6,6 @@ from OpenGL.GL import *
 from oven_engine_3D.meshes import CubeMesh, PlaneMesh, Mesh, OBJMesh, SphereMesh
 from oven_engine_3D.shaders.mesh_shader import MeshShader
 from oven_engine_3D.shaders.skybox_shader import SkyboxShader
-# from oven_engine_3D.shaders import MeshShader, SkyboxShader
 from oven_engine_3D.utils.geometry import Vector3D, euler_from_vectors
 from oven_engine_3D.utils.matrices import ModelMatrix
 from oven_engine_3D.utils.textures import TexturesManager
@@ -127,7 +126,7 @@ class Cube(DrawnEntity):
         pass
 
 class Skybox(DrawnEntity):
-    def __init__(self, parent_app, sky_textures):
+    def __init__(self, sky_textures, parent_app=None):
         paths = TexturesManager.generate_cubemap_paths(**sky_textures)
         cm, self.sky_color = TexturesManager.load_cubemap(paths, compute_dom_color=True)
 
