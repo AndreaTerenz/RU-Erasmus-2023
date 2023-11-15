@@ -1,5 +1,7 @@
 import os
 
+import cv2
+import numpy as np
 import pygame as pg
 import pygame.image as img
 from OpenGL.GL import *
@@ -32,7 +34,8 @@ class TexturesManager:
             path = MISSING_TEXTURE
 
         surf = img.load(path)
-        tex_str = img.tostring(surf, "RGBA", 1)
+        form = "RGBA" if pixel_format == GL_RGBA else "RGB"
+        tex_str = img.tostring(surf, form, True)
         size = Vector2D(surf.get_size())
 
         if not (filtering in [GL_NEAREST, GL_LINEAR]):
@@ -42,16 +45,15 @@ class TexturesManager:
 
         glBindTexture(GL_TEXTURE_2D, textID)
 
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filtering)
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filtering)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filtering)
 
         if type(clamping) is IntConstant:
             clamping = (clamping, clamping)
 
-        if clamping[0] in [GL_CLAMP_TO_EDGE, GL_MIRRORED_REPEAT, GL_REPEAT, GL_CLAMP_TO_BORDER]:
-            glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, clamping[0])
-        if clamping[1] in [GL_CLAMP_TO_EDGE, GL_MIRRORED_REPEAT, GL_REPEAT, GL_CLAMP_TO_BORDER]:
-            glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, clamping[1])
+        for idx in [0,1]:
+            if clamping[idx] in [GL_CLAMP_TO_EDGE, GL_MIRRORED_REPEAT, GL_REPEAT, GL_CLAMP_TO_BORDER]:
+                glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S + idx, clamping[idx])
 
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0)
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0)
@@ -70,15 +72,27 @@ class TexturesManager:
         return textID
 
     @staticmethod
-    def load_cubemap(px : str = MISSING_TEXTURE, nx : str = MISSING_TEXTURE,
-                     py : str = MISSING_TEXTURE, ny : str = MISSING_TEXTURE,
-                     pz : str = MISSING_TEXTURE, nz : str = MISSING_TEXTURE,
-                     folder : str = None):
-        print(f"Creating cubemap...")
+    def generate_cubemap_paths(folder : str = "", ext : str = "", **kwargs):
+        paths = {
+            "px": "",
+            "nx": "",
+            "py": "",
+            "ny": "",
+            "pz": "",
+            "nz": ""
+        }
+        for k, v in paths.items():
+            default = f"{k}.{ext}"
+            if folder != "":
+                default = os.path.join(folder, default)
 
-        paths = [px, nx, py, ny, pz, nz]
-        if folder is not None:
-            paths = [os.path.join(folder, p) for p in paths]
+            paths[k] = kwargs.get(k, default)
+
+        return list(paths.values())
+
+    @staticmethod
+    def load_cubemap(paths, compute_dom_color = False):
+        print(f"Creating cubemap...")
 
         cubemap_total_path = "#".join(paths)
 
@@ -89,9 +103,8 @@ class TexturesManager:
         all_found = True
         surfaces = [None] * 6
 
-        for idx in range(len(paths)):
-            print(f"\tLoading face {idx} from {paths[idx]}...", end="")
-            p = paths[idx]
+        for idx, p in enumerate(paths):
+            print(f"\tLoading face {idx} from {p}...", end="")
 
             found = os.path.exists(p)
             if not found:
@@ -106,13 +119,14 @@ class TexturesManager:
         faces_data = [""] * 6
         faces_size = [Vector2D.ZERO] * 6
 
-        for idx, s in enumerate(surfaces):
+        for idx in range(len(surfaces)):
+            s = surfaces[idx]
             if not all_found:
                 # If we haven't found all faces, then at least one is the missing texture,
                 # which is 512x512, so we need to scale all the faces to that size
                 s = pg.transform.scale(s, (512, 512))
 
-            faces_data[idx] = (img.tostring(s, "RGB", False))
+            faces_data[idx] = img.tostring(s, "RGB", False)
             faces_size[idx] = Vector2D(s.get_size())
 
         cmapID = glGenTextures(1)
@@ -141,7 +155,48 @@ class TexturesManager:
         else:
             print("done (failed to load some faces)")
 
-        return cmapID
+        if not compute_dom_color:
+            return cmapID
+
+        surfaces.pop(GL_TEXTURE_CUBE_MAP_NEGATIVE_Y - GL_TEXTURE_CUBE_MAP_POSITIVE_X)
+        col = TexturesManager.compute_sky_color(surfaces)
+
+        return cmapID, col
+
+    @staticmethod
+    def compute_sky_color(surfs):
+        concat_data = None
+
+        for s in surfs:
+            scaling = .1
+            size = Vector2D(s.get_size())
+
+            if size[0] >= 4096:
+                scaling = .125
+            elif size[0] >= 2048:
+                scaling = .25
+            elif size[0] >= 256:
+                scaling = .5
+
+            s = pg.transform.scale(s, tuple(size * scaling))
+            data = pg.surfarray.array3d(s)
+
+            if concat_data is None:
+                concat_data = data
+            else:
+                concat_data = np.concatenate((concat_data, data), axis=1)
+
+        pixels = np.float32(concat_data.reshape(-1, 3))
+
+        n_colors = 2
+        criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 100, .1)
+        flags = cv2.KMEANS_RANDOM_CENTERS
+
+        _, labels, palette = cv2.kmeans(pixels, n_colors, None, criteria, 10, flags)
+        _, counts = np.unique(labels, return_counts=True)
+
+        dominant = [int(v) for v in palette[np.argmax(counts)]]
+        return pg.Color(*dominant)
 
     @staticmethod
     def is_texture_valid(tex):

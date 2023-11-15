@@ -1,9 +1,9 @@
 import ctypes
+from enum import Enum
 
 from pygame.locals import *
 
 from oven_engine_3D.environment import Environment
-from oven_engine_3D.utils.textures import TexturesManager
 
 ctypes.windll.user32.SetProcessDPIAware()
 
@@ -14,15 +14,20 @@ from oven_engine_3D.utils.geometry import Vector2D
 
 
 class BaseApp3D(ABC):
+    class GlobalAmbientMode(Enum):
+        NONE = 0
+        CLEAR_COLOR = 1
+        SKYBOX = 2
+
     def __init__(self,
                  win_title   = "BaseApp",
                  win_size    = Vector2D.ZERO,
                  clear_color = "black",
                  fullscreen  = True,
-                 ambient_color = None,
                  update_camera = True,
                  face_culling = True,
                  environment : Environment = None,
+                 glob_ambient_mode = GlobalAmbientMode.CLEAR_COLOR,
                  sky_textures = None,
                  vsync = False
                  ):
@@ -40,8 +45,6 @@ class BaseApp3D(ABC):
 
         glViewport(0, 0, *self.win_size)
 
-        self.ambient_color = ambient_color if ambient_color is not None else clear_color
-
         if type(clear_color) is str:
             clear_color = Color(clear_color)
 
@@ -53,6 +56,7 @@ class BaseApp3D(ABC):
         self.light = None
         self.lights = []
         self.face_culling = face_culling
+        self.glob_ambient_mode = glob_ambient_mode
 
         self.clock = pg.time.Clock()
         self.ticks = 0
@@ -80,12 +84,24 @@ class BaseApp3D(ABC):
 
         self.skybox = None
         if sky_textures is not None and type(sky_textures) is dict:
-            cm = TexturesManager.load_cubemap(**sky_textures)
-            self.skybox = Skybox(parent_app=self, cubemap_text=cm)
+            self.skybox = Skybox(parent_app=self, sky_textures=sky_textures)
 
         self.entities = []
         self.opaque = []
         self.transparent = []
+
+    @property
+    def global_ambient(self):
+        if self.skybox is None and self.glob_ambient_mode == BaseApp3D.GlobalAmbientMode.SKYBOX:
+            return self.clear_color
+
+        match self.glob_ambient_mode:
+            case BaseApp3D.GlobalAmbientMode.NONE:
+                return "black"
+            case BaseApp3D.GlobalAmbientMode.CLEAR_COLOR:
+                return self.clear_color
+            case BaseApp3D.GlobalAmbientMode.SKYBOX:
+                return self.skybox.sky_color
 
     def add_entity(self, ent: Entity):
         self.entities.append(ent)

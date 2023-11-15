@@ -15,6 +15,7 @@
 struct Environment
 {
 	vec4 global_ambient;
+	float ambient_strength;
 	vec4 fog_color;
 	float start_fog, end_fog; // Used only for linear fog
 	float fog_density; // Used only for exp or exp2 fog
@@ -22,6 +23,7 @@ struct Environment
 	int tonemap_mode; // -1 = none, 0 = aces
 };
 uniform Environment u_env;
+uniform samplerCube u_skybox;
 
 struct Light
 {
@@ -225,16 +227,14 @@ void main(void)
 	// compute shaded color
 	vec4 view_vec = u_camera_position - v_pos;
 	float spec_tex_value = u_material.use_spec_texture ? texture(u_material.specular_tex, v_uv).r : 1.;
-	vec4 shaded_color = BLACK;
+
+	vec4 shaded_color = u_env.global_ambient * base_diff * u_env.ambient_strength;
 
 	int c = (u_light_count < 4) ? u_light_count : 4;
 	for (int i = 0; i < c; i++)
 	{
 		shaded_color += color_from_light(view_vec, u_lights[i], base_diff, spec_tex_value);
 	}
-
-	// Add global ambient color
-	shaded_color += u_env.global_ambient * base_diff * .5;
 
 	// apply fog
 	float camera_dist = length(view_vec);

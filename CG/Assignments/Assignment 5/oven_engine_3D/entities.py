@@ -4,11 +4,12 @@ import shortuuid
 from OpenGL.GL import *
 
 from oven_engine_3D.meshes import CubeMesh, PlaneMesh, Mesh, OBJMesh, SphereMesh
-from oven_engine_3D.shaders.mesh import MeshShader
-from oven_engine_3D.shaders.skybox import SkyboxShader
+from oven_engine_3D.shaders.mesh_shader import MeshShader
+from oven_engine_3D.shaders.skybox_shader import SkyboxShader
 # from oven_engine_3D.shaders import MeshShader, SkyboxShader
 from oven_engine_3D.utils.geometry import Vector3D, euler_from_vectors
 from oven_engine_3D.utils.matrices import ModelMatrix
+from oven_engine_3D.utils.textures import TexturesManager
 
 
 class Entity(ABC):
@@ -126,15 +127,24 @@ class Cube(DrawnEntity):
         pass
 
 class Skybox(DrawnEntity):
-    def __init__(self, parent_app, cubemap_text):
-        shader = SkyboxShader(cubemap_id=cubemap_text)
-        # super().__init__(parent_app, mesh=SkyboxMesh(), name="skybox", shader=shader)
+    def __init__(self, parent_app, sky_textures):
+        paths = TexturesManager.generate_cubemap_paths(**sky_textures)
+        cm, self.sky_color = TexturesManager.load_cubemap(paths, compute_dom_color=True)
+
+        print("Computing skybox color...")
+
+        shader = SkyboxShader(cubemap_id=cm)
+
         super().__init__(parent_app, mesh=shader.sky_mesh, name="skybox", shader=shader)
+
+    @property
+    def cubemap_id(self):
+        return self.shader.cubemap_id
 
     def draw(self):
         glDisable(GL_CULL_FACE)
         glDepthFunc(GL_LEQUAL)
-        self.shader.draw(app=self.parent_app)#, mesh=self.mesh)
+        self.shader.draw(app=self.parent_app)
         glDepthFunc(GL_LESS)
         glEnable(GL_CULL_FACE)
 

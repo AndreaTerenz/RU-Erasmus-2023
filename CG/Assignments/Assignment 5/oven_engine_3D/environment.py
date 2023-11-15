@@ -13,21 +13,21 @@ class Environment:
         REINHARD = 1
         UNCHARTED = 2
 
-    def __init__(self, global_ambient = "black",
+    def __init__(self,
                  fog_color = "gray",
                  start_fog = 1.,
                  end_fog = 20.,
                  fog_density = .1,
+                 ambient_color_strength = .2,
                  fog_mode = FogMode.LINEAR,
                  tonemap = Tonemapping.NONE):
-        #TODO: Actually use this color..
-        self.global_ambient = global_ambient
         self.fog_color = fog_color
         self.start_fog = start_fog
         self.end_fog = end_fog
         self.fog_density = fog_density
         self.fog_mode = fog_mode
         self.tonemap = tonemap
+        self.ambient_color_strength = ambient_color_strength
 
     @property
     def fog_enabled(self):

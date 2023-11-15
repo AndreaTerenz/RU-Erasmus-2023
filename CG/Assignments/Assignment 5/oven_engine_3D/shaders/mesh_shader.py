@@ -126,7 +126,8 @@ class MeshShader(BaseShader):
 
         self.set_light_uniforms(app.lights)
         self.set_camera_uniforms(app.camera)
-        self.set_environment_uniforms(app.environment)
+        self.set_environment_uniforms(app.environment, app.global_ambient)
+        self.set_skybox_texture(app.skybox.cubemap_id)
 
         time = np.float32(app.ticks / 1000.)
         self.set_time(time)
@@ -153,8 +154,10 @@ class MeshShader(BaseShader):
         self.set_uniform_matrix(camera.view_matrix.values, "u_view_matrix")
         self.set_uniform_vec3D(camera.view_matrix.eye, "u_camera_position")
 
-    def set_environment_uniforms(self, env: Environment):
-        self.set_uniform_color(env.global_ambient, "u_env.global_ambient")
+    def set_environment_uniforms(self, env: Environment, app_glob_ambient):
+        self.set_uniform_color(app_glob_ambient, "u_env.global_ambient")
+        self.set_uniform_float(env.ambient_color_strength, "u_env.ambient_strength")
+
         self.set_uniform_color(env.fog_color, "u_env.fog_color")
         self.set_uniform_float(env.start_fog, "u_env.start_fog")
         self.set_uniform_float(env.end_fog, "u_env.end_fog")
@@ -187,6 +190,10 @@ class MeshShader(BaseShader):
     def set_specular_texture(self):
         self.set_texture(1, self.spec_tex_id,
                          "u_material.specular_tex", tex_flag_uniform_name="u_material.use_spec_texture")
+
+    def set_skybox_texture(self, skybox_tex_id):
+        self.set_texture(1, skybox_tex_id,
+                         "u_skybox", texture_type=GL_TEXTURE_CUBE_MAP)
 
     def set_time(self, value: float):
         self.set_uniform_float(value, "u_time")

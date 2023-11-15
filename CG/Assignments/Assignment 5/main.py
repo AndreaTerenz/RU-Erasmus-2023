@@ -9,7 +9,7 @@ from oven_engine_3D.camera import Camera, FPCamera
 from oven_engine_3D.entities import Plane, DrawnEntity, Cube, Sphere
 from oven_engine_3D.environment import Environment
 from oven_engine_3D.light import Light
-from oven_engine_3D.shaders.mesh import MeshShader
+from oven_engine_3D.shaders.mesh_shader import MeshShader
 from oven_engine_3D.utils.bezier import BezierCurve
 from oven_engine_3D.utils.geometry import Vector3D, Vector2D
 from oven_engine_3D.utils.textures import TexturesManager
@@ -17,20 +17,16 @@ from oven_engine_3D.utils.textures import TexturesManager
 
 class Assignment5(BaseApp3D):
     def __init__(self):
-        super().__init__(fullscreen=True, ambient_color="white",
+        super().__init__(fullscreen=True,
+                         glob_ambient_mode=BaseApp3D.GlobalAmbientMode.SKYBOX,
                          win_size = Vector2D(1280, 720),
                          clear_color=Color(30, 30, 30), update_camera=False,
                          sky_textures={
-                             "px" : "px.jpg",
-                             "nx" : "nx.jpg",
-                             "py" : "py.jpg",
-                             "ny" : "ny.jpg",
-                             "pz" : "pz.jpg",
-                             "nz" : "nz.jpg",
-                             "folder" : "res/textures/skyes/lake"
+                             "folder" : "res\\textures\\skyes\\desert_day",
+                             "ext": "png"
                          },
                          environment=Environment(
-                             #global_ambient=Color(114, 230, 232),
+                             ambient_color_strength=.8,
                              fog_mode=Environment.FogMode.EXP, fog_density=.009,
                              tonemap=Environment.Tonemapping.ACES
                          ))
@@ -41,7 +37,7 @@ class Assignment5(BaseApp3D):
         pg.mouse.set_visible(False)
         pg.event.set_grab(True)
 
-        plane_mat = MeshShader(diffuse_texture="res/textures/uvgrid.jpg", uv_scale = Vector2D.ONE * 10.)
+        plane_mat = MeshShader(diffuse_texture="res/textures/uvgrid.jpg", uv_scale = Vector2D.ONE * 4.)
         self.add_entity(Plane(self, origin=Vector3D.DOWN * 5., scale=30., shader=plane_mat))
 
         ########### TRANSPARENCY
@@ -126,7 +122,7 @@ class Assignment5(BaseApp3D):
         self.bezier1 = BezierCurve.from_file("test.bezier", loop_mode=BezierCurve.LoopMode.LOOP)
         ##############################
 
-        self.animate = True
+        self.animate = False
         if not self.animate:
             camera_params = {"ratio": ratio, "fov": math.tau / 6., "near": .1, "far": 80.}
             self.camera = self.add_entity(FPCamera(self, look_at=Vector3D.FORWARD, sensitivity=80., **camera_params))
