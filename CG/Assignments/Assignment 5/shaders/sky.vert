@@ -1,4 +1,6 @@
-attribute vec3 a_position;
+#version 330
+
+layout(location = 0) in vec3 a_position;
 
 uniform mat4 u_view_matrix;
 uniform mat4 u_projection_matrix;
@@ -6,7 +8,7 @@ uniform mat4 u_projection_matrix;
 uniform float u_time;
 uniform float u_rotation;
 
-varying vec3 v_uv;
+out vec3 v_uv;
 
 void main(void)
 {

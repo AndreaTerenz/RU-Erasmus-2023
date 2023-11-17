@@ -141,7 +141,9 @@ class BaseShader(ABC):
 
         glCompileShader(shader_id)
         result = glGetShaderiv(shader_id, GL_COMPILE_STATUS)
-        assert result == 1, f"Couldn't compile shader {str(shader_file)} \nShader compilation Log:\n{str(glGetShaderInfoLog(shader_id))}"
+        assert result == 1, (f"Couldn't compile shader {shader_file.name} \n"
+                             "Shader compilation Log:\n"
+                             f"{glGetShaderInfoLog(shader_id).decode('ascii')}")
 
         lookup[shader_path] = shader_id
 

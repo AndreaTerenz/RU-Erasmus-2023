@@ -1,8 +1,15 @@
+#version 330
+
+#define TONEMAP_NONE -1
+#define TONEMAP_ACES 0
+#define TONEMAP_REINHARD 1
+#define TONEMAP_UNCHARTED2 2
+
 uniform int u_tonemap_mode;
 uniform samplerCube u_cubemap;
 uniform float u_time;
 
-varying vec3 v_uv;
+in vec3 v_uv;
 
 vec3 aces(vec3 x) {
   const float a = 2.51;
@@ -42,13 +49,15 @@ vec3 uncharted2_filmic(vec3 v)
 vec4 tonemap(vec4 color)
 {
 	vec3 col = color.rgb;
-
-	if (u_tonemap_mode == 0)
-        return vec4(aces(col), 1.);
-	else if (u_tonemap_mode == 1)
-       return vec4(reinhard(col), 1.);
-	else if (u_tonemap_mode == 2)
-        return vec4(uncharted2_filmic(col), 1.);
+	switch (u_tonemap_mode)
+	{
+		case TONEMAP_ACES:
+			return vec4(aces(col), color.a);
+		case TONEMAP_REINHARD:
+			return vec4(reinhard(col), color.a);
+		case TONEMAP_UNCHARTED2:
+			return vec4(uncharted2_filmic(col), color.a);
+	}
 
 	return clamp(color, 0., 1.);
 }

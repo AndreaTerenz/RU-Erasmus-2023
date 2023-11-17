@@ -1,6 +1,8 @@
-attribute vec3 a_position;
-attribute vec3 a_normal;
-attribute vec2 a_uv;
+#version 330
+
+layout(location = 0) in vec3 a_position;
+layout(location = 1) in vec3 a_normal;
+layout(location = 2) in vec2 a_uv;
 
 uniform mat4 u_model_matrix;
 uniform mat4 u_view_matrix;
@@ -10,9 +12,9 @@ uniform vec2 u_uv_scale;
 
 uniform float u_time;
 
-varying vec4 v_pos;
-varying vec4 v_norm;
-varying vec2 v_uv;
+out vec4 v_pos;
+out vec4 v_norm;
+out vec2 v_uv;
 
 //--INJECTION-BEGIN
 vec4 get_position(vec4 pos)

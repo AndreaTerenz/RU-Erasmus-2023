@@ -1,4 +1,7 @@
-#define BLACK vec4(0., 0., 0., 1.)
+#version 330
+
+#define BLACK vec4(vec3(0.), 1.)
+#define CLEAR vec4(0.)
 #define WHITE vec4(1.)
 #define FOG_NONE -1
 #define FOG_LINEAR 0
@@ -55,15 +58,15 @@ struct Material
 uniform Material u_material;
 
 uniform vec4 u_camera_position;
-uniform int u_light_count;
+uniform int u_light_count = 0;
 
 uniform float u_time;
 uniform vec2 u_uv_offset;
 uniform vec2 u_uv_scale;
 
-varying vec4 v_pos;
-varying vec4 v_norm;
-varying vec2 v_uv;
+in vec4 v_pos;
+in vec4 v_norm;
+in vec2 v_uv;
 
 float rand(vec2 co)
 {
@@ -168,17 +171,6 @@ vec3 uncharted2_filmic(vec3 v)
 vec4 tonemap(vec4 color)
 {
 	vec3 col = color.rgb;
-
-	if (u_env.tonemap_mode == TONEMAP_ACES)
-		return vec4(aces(col), color.a);
-	if (u_env.tonemap_mode == TONEMAP_REINHARD)
-		return vec4(reinhard(col), color.a);
-	if (u_env.tonemap_mode == TONEMAP_UNCHARTED2)
-		return vec4(uncharted2_filmic(col), color.a);
-
-	/*
-	I swear to God this used to work
-	now "switch" is a reserved word that is being used improperly???
 	switch (u_env.tonemap_mode)
 	{
 		case TONEMAP_ACES:
@@ -187,7 +179,7 @@ vec4 tonemap(vec4 color)
 			return vec4(reinhard(col), color.a);
 		case TONEMAP_UNCHARTED2:
 			return vec4(uncharted2_filmic(col), color.a);
-	}*/
+	}
 
 	return clamp(color, 0., 1.);
 }
@@ -231,11 +223,8 @@ void main(void)
 
 	vec4 shaded_color = u_env.global_ambient * base_diff * u_env.ambient_strength;
 
-	int c = (u_light_count < 4) ? u_light_count : 4;
-	for (int i = 0; i < c; i++)
-	{
+	for (int i = 0; i < min(u_light_count, 4); i++)
 		shaded_color += color_from_light(view_vec, u_lights[i], base_diff, spec_tex_value);
-	}
 
 	// apply fog
 	float camera_dist = length(view_vec);
