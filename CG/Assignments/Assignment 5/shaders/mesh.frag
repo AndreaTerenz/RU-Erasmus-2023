@@ -30,6 +30,7 @@ struct Light
 	vec4 diffuse,
 		 specular,
 		 ambient;
+	bool is_sun;
 	float attenuation[3];
 	vec4 position;
 	float intensity;
@@ -76,7 +77,7 @@ vec4 color_from_light(vec4 view_vec, Light light, vec4 base_diffuse, float spec_
 	if (light.radius > 0. && d > light.radius)
 		return BLACK;
 
-	vec4 s_vec = light.position - v_pos;
+	vec4 s_vec = light.is_sun ? normalize(light.position) : light.position - v_pos;
 
 	vec4 ambient = u_material.receive_ambient ? (light.ambient * u_material.ambient_color) : BLACK;
 

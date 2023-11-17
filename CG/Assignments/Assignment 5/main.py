@@ -8,7 +8,6 @@ from oven_engine_3D.base_app import BaseApp3D
 from oven_engine_3D.camera import Camera, FPCamera
 from oven_engine_3D.entities import Plane, DrawnEntity, Cube, Sphere
 from oven_engine_3D.environment import Environment
-from oven_engine_3D.light import Light
 from oven_engine_3D.shaders.mesh_shader import MeshShader
 from oven_engine_3D.utils.bezier import BezierCurve
 from oven_engine_3D.utils.geometry import Vector3D, Vector2D
@@ -33,12 +32,14 @@ class Assignment5(BaseApp3D):
 
         ratio = self.win_size.aspect_ratio
 
-        #self.lights.append(Light(self, intensity=.2, radius=0.))
         pg.mouse.set_visible(False)
         pg.event.set_grab(True)
 
         plane_mat = MeshShader(diffuse_texture="res/textures/uvgrid.jpg", uv_scale = Vector2D.ONE * 4.)
         self.add_entity(Plane(self, origin=Vector3D.DOWN * 5., scale=30., shader=plane_mat))
+
+        # Sun
+        self.add_light(position=Vector3D(-.5, 2.5, 2.), intensity=.5, sun=True)
 
         ########### TRANSPARENCY
         tmp = Vector3D.FORWARD * 8. + Vector3D.LEFT * 4.
@@ -78,9 +79,9 @@ class Assignment5(BaseApp3D):
         mat_crate2 = mat_crate1.variation(specular_texture="intentionallywrongpath.png")
         self.add_entity(Cube(parent_app=self, shader=mat_crate2, origin=tmp + Vector3D.RIGHT * 2.2))
 
-        self.lights.append(Light(self, position=tmp + Vector3D.RIGHT * 1.5 + Vector3D.BACKWARD * 2., radius=3., intensity=15., color="green"))
+        spec_light = self.add_light(position=tmp + Vector3D(1.5, 0., -2.), radius=3., intensity=15., diffuse="green")
         light_cube_mat = MeshShader(unshaded=True, diffuse_color = "green")
-        self.add_entity(Cube(self, origin=self.lights[-1].origin, scale=.1, shader=light_cube_mat))
+        self.add_entity(Cube(self, origin=spec_light.origin, scale=.1, shader=light_cube_mat))
         ##############################
 
         ####### CUSTOM SHADERS
@@ -109,9 +110,9 @@ class Assignment5(BaseApp3D):
 
         self.add_entity(DrawnEntity(self, mesh="res/models/monke.obj", origin=tmp, rotation=Vector3D.UP*math.tau/4.))
         self.add_entity(Cube(self, origin = tmp + Vector3D.DOWN * 2., scale=Vector3D(3., .2, 3.), color="gray"))
-        self.lights.append(Light(self, position=tmp + Vector3D.BACKWARD * 1.5, color="red", radius=3., intensity=20.))
+        self.add_light(position=tmp + Vector3D.BACKWARD * 1.5, diffuse="red", radius=3., intensity=20.)
         self.add_entity(Cube(self, origin=self.lights[-1].origin, scale=.1, shader=light_cube_mat.variation(diffuse_color="red")))
-        self.lights.append(Light(self, position=tmp - Vector3D.BACKWARD * 1.5, color="cyan", radius=3., intensity=20.))
+        self.add_light(position=tmp - Vector3D.BACKWARD * 1.5, diffuse="cyan", radius=3., intensity=20.)
         self.add_entity(Cube(self, origin=self.lights[-1].origin, scale=.1, shader=light_cube_mat.variation(diffuse_color="cyan")))
         ##############################
 

@@ -3,14 +3,20 @@ import pygame as pg
 from oven_engine_3D.entities import Entity
 from oven_engine_3D.utils.geometry import Vector3D
 
-BASE_INTENSITY = 2.
+BASE_INTENSITY = 1.
 
 class Light(Entity):
-    def __init__(self, parent_app, position=Vector3D.ZERO, color="white", radius=0.,
-                 ambient_color="black", intensity=1., attenuation=(1., .2, 0.)):
+    def __init__(self, parent_app, position=Vector3D.ZERO, diffuse="white", specular=None, radius=0.,
+                 ambient_color="black", intensity=1., attenuation=(1., .2, 0.), sun=False):
         super().__init__(parent_app, origin=position)
 
-        self.color = color
+        self.sun = sun
+        if self.sun:
+            radius = 0.
+            specular = "black"
+
+        self.diffuse = diffuse
+        self.specular = specular if specular is not None else diffuse
         self.radius = radius
         self.ambient = ambient_color
         self.intensity = intensity * BASE_INTENSITY
@@ -23,8 +29,8 @@ class Light(Entity):
         pass
 
 class MovableLight(Light):
-    def __init__(self, parent_app, position, color, radius=0.):
-        super().__init__(parent_app, position, color, radius=radius)
+    def __init__(self, parent_app, position, diffuse, radius=0.):
+        super().__init__(parent_app, position, diffuse, radius=radius)
 
         self.keys_to_dir = {
             pg.K_k: Vector3D.FORWARD,

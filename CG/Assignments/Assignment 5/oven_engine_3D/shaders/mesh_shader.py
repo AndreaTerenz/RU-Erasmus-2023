@@ -173,9 +173,10 @@ class MeshShader(BaseShader):
             self.set_uniform_vec3D(l.origin, f"u_lights[{idx}].position")
             self.set_uniform_float(l.radius, f"u_lights[{idx}].radius")
             self.set_uniform_float(l.intensity, f"u_lights[{idx}].intensity")
+            self.set_uniform_bool(l.sun, f"u_lights[{idx}].is_sun")
             self.set_uniform_float(l.attenuation, f"u_lights[{idx}].attenuation")
-            self.set_uniform_color(l.color, f"u_lights[{idx}].diffuse")
-            self.set_uniform_color(l.color, f"u_lights[{idx}].specular")
+            self.set_uniform_color(l.diffuse, f"u_lights[{idx}].diffuse")
+            self.set_uniform_color(l.specular, f"u_lights[{idx}].specular")
             self.set_uniform_color(l.ambient, f"u_lights[{idx}].ambient")
 
     def set_model_matrix(self, matrix):

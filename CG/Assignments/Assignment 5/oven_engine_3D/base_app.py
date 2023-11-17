@@ -4,6 +4,7 @@ from enum import Enum
 from pygame.locals import *
 
 from oven_engine_3D.environment import Environment
+from oven_engine_3D.light import Light
 
 ctypes.windll.user32.SetProcessDPIAware()
 
@@ -99,6 +100,12 @@ class BaseApp3D(ABC):
                 self.opaque.append(ent)
 
         return ent
+
+    def add_light(self, **kwargs):
+        light = kwargs.get("light", Light(parent_app=self, **kwargs))
+
+        self.lights.append(light)
+        return light
 
     def _update(self):
         delta = self.clock.tick(self.target_fps) / 1000.0
