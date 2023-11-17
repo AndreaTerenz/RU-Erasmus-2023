@@ -34,19 +34,19 @@ class BaseApp3D(ABC):
 
         pg.init()
 
-        self.screen = None
+        flags = pg.OPENGL|pg.DOUBLEBUF
         if fullscreen or win_size == Vector2D.ZERO:
-            self.screen = pg.display.set_mode((0,0), pg.OPENGL|pg.DOUBLEBUF|pg.FULLSCREEN)
-            self.win_size = Vector2D(self.screen.get_size())
-        else:
-            self.screen = pg.display.set_mode(tuple(win_size), pg.OPENGL|pg.DOUBLEBUF)
-            self.win_size = win_size
-            pg.display.set_caption(win_title)
+            flags |= pg.FULLSCREEN
+            win_size *= 0.
+
+        screen = pg.display.set_mode(tuple(win_size), flags)
+        self.win_size = Vector2D(screen.get_size())
+
+        pg.display.set_caption(win_title)
 
         glViewport(0, 0, *self.win_size)
 
-        if type(clear_color) is str:
-            clear_color = Color(clear_color)
+        clear_color = get_color(clear_color)
 
         self.camera = None
         self.update_camera = update_camera
@@ -102,7 +102,7 @@ class BaseApp3D(ABC):
         return ent
 
     def add_light(self, **kwargs):
-        light = kwargs.get("light", Light(parent_app=self, **kwargs))
+        light = kwargs["light"] if "light" in kwargs.keys() else Light(parent_app=self, **kwargs)
 
         self.lights.append(light)
         return light

@@ -16,7 +16,7 @@ from oven_engine_3D.utils.textures import TexturesManager
 
 class Assignment5(BaseApp3D):
     def __init__(self):
-        super().__init__(fullscreen=True,
+        super().__init__(fullscreen=True,# face_culling=False,
                          glob_ambient_mode=BaseApp3D.GlobalAmbientMode.SKYBOX,
                          win_size = Vector2D(1280, 720),
                          clear_color=Color(30, 30, 30), update_camera=False,
@@ -39,7 +39,7 @@ class Assignment5(BaseApp3D):
         self.add_entity(Plane(self, origin=Vector3D.DOWN * 5., scale=30., shader=plane_mat))
 
         # Sun
-        self.add_light(position=Vector3D(-.5, 2.5, 2.), intensity=.5, sun=True)
+        self.add_light(origin=Vector3D(-.5, 2.5, 2.), intensity=.5, sun=True)
 
         ########### TRANSPARENCY
         tmp = Vector3D.FORWARD * 8. + Vector3D.LEFT * 4.
@@ -79,7 +79,7 @@ class Assignment5(BaseApp3D):
         mat_crate2 = mat_crate1.variation(specular_texture="intentionallywrongpath.png")
         self.add_entity(Cube(parent_app=self, shader=mat_crate2, origin=tmp + Vector3D.RIGHT * 2.2))
 
-        spec_light = self.add_light(position=tmp + Vector3D(1.5, 0., -2.), radius=3., intensity=15., diffuse="green")
+        spec_light = self.add_light(origin=tmp + Vector3D(1.5, 0., -2.), radius=3., intensity=15., diffuse="green")
         light_cube_mat = MeshShader(unshaded=True, diffuse_color = "green")
         self.add_entity(Cube(self, origin=spec_light.origin, scale=.1, shader=light_cube_mat))
         ##############################
@@ -110,9 +110,9 @@ class Assignment5(BaseApp3D):
 
         self.add_entity(DrawnEntity(self, mesh="res/models/monke.obj", origin=tmp, rotation=Vector3D.UP*math.tau/4.))
         self.add_entity(Cube(self, origin = tmp + Vector3D.DOWN * 2., scale=Vector3D(3., .2, 3.), color="gray"))
-        self.add_light(position=tmp + Vector3D.BACKWARD * 1.5, diffuse="red", radius=3., intensity=20.)
+        self.add_light(origin=tmp + Vector3D.BACKWARD * 1.5, diffuse="red", radius=3., intensity=20.)
         self.add_entity(Cube(self, origin=self.lights[-1].origin, scale=.1, shader=light_cube_mat.variation(diffuse_color="red")))
-        self.add_light(position=tmp - Vector3D.BACKWARD * 1.5, diffuse="cyan", radius=3., intensity=20.)
+        self.add_light(origin=tmp - Vector3D.BACKWARD * 1.5, diffuse="cyan", radius=3., intensity=20.)
         self.add_entity(Cube(self, origin=self.lights[-1].origin, scale=.1, shader=light_cube_mat.variation(diffuse_color="cyan")))
         ##############################
 

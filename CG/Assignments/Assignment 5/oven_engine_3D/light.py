@@ -6,9 +6,9 @@ from oven_engine_3D.utils.geometry import Vector3D
 BASE_INTENSITY = 1.
 
 class Light(Entity):
-    def __init__(self, parent_app, position=Vector3D.ZERO, diffuse="white", specular=None, radius=0.,
+    def __init__(self, parent_app, origin=Vector3D.ZERO, diffuse="white", specular=None, radius=0.,
                  ambient_color="black", intensity=1., attenuation=(1., .2, 0.), sun=False):
-        super().__init__(parent_app, origin=position)
+        super().__init__(parent_app, origin=origin)
 
         self.sun = sun
         if self.sun:
@@ -29,8 +29,8 @@ class Light(Entity):
         pass
 
 class MovableLight(Light):
-    def __init__(self, parent_app, position, diffuse, radius=0.):
-        super().__init__(parent_app, position, diffuse, radius=radius)
+    def __init__(self, parent_app, origin, diffuse, radius=0.):
+        super().__init__(parent_app, origin, diffuse, radius=radius)
 
         self.keys_to_dir = {
             pg.K_k: Vector3D.FORWARD,

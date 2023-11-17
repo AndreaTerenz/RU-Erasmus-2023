@@ -54,6 +54,8 @@ struct Material
 		 unshaded,
 		 use_diff_texture,
 		 use_spec_texture;
+	bool use_distance_fade;
+	float distance_fade[2];
 };
 uniform Material u_material;
 
@@ -194,6 +196,23 @@ vec4 apply_transparency(vec4 input_color, float alpha)
 	return input_color;
 }
 
+float apply_distance_fade(float input_alpha, float dist)
+{
+	float min_dist = u_material.distance_fade[0];
+	float max_dist = u_material.distance_fade[1];
+
+	if (u_material.transparency_mode == TRANSP_BLEND)
+	{
+		float fact = (dist-min_dist)/(max_dist - min_dist);
+
+		input_alpha *= min(1., max(0., 1.-fact));
+	}
+	else if (dist >= (min_dist+max_dist)/2.)
+		input_alpha = 0.;
+
+	return input_alpha;
+}
+
 //--INJECTION-BEGIN
 vec4 get_base_diffuse()
 {
@@ -207,7 +226,13 @@ void main(void)
 	// compute base diffuse color
 	vec4 base_diff = get_base_diffuse();
 
-	// discard pixel if alpha is too low
+	// distance fade
+	vec4 view_vec = u_camera_position - v_pos;
+	float camera_dist = length(view_vec);
+
+	/*if (u_material.use_distance_fade)
+		base_diff.a = apply_distance_fade(base_diff.a, camera_dist);*/
+
 	if (u_material.transparency_mode == TRANSP_CUTOFF && base_diff.a < u_material.alpha_cutoff)
 		discard;
 
@@ -218,7 +243,6 @@ void main(void)
 	}
 
 	// compute shaded color
-	vec4 view_vec = u_camera_position - v_pos;
 	float spec_tex_value = u_material.use_spec_texture ? texture(u_material.specular_tex, v_uv).r : 1.;
 
 	vec4 shaded_color = u_env.global_ambient * base_diff * u_env.ambient_strength;
@@ -227,7 +251,6 @@ void main(void)
 		shaded_color += color_from_light(view_vec, u_lights[i], base_diff, spec_tex_value);
 
 	// apply fog
-	float camera_dist = length(view_vec);
 	vec4 fogged_color = apply_fog(shaded_color, camera_dist);
 
 	// tonemap

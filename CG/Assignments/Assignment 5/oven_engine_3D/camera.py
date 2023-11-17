@@ -174,11 +174,8 @@ class FPCamera(Camera):
 
         if slide_dir != Vector3D.ZERO:
             slide_dir = slide_dir.rotate(Vector3D.UP, self.y_rot).normalized
-            sp = delta * self.speed
+            slide_offset = slide_dir * delta * self.speed
 
-            slide_offset = slide_dir * sp
-
-            # move player
             self.translate(slide_offset)
 
     def pitch(self, delta):

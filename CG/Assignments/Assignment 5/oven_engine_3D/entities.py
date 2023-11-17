@@ -12,12 +12,12 @@ from oven_engine_3D.utils.textures import TexturesManager
 
 
 class Entity(ABC):
-    def __init__(self, parent_app, origin=Vector3D.ZERO, rotation=Vector3D.ZERO, scale=Vector3D.ONE, name="", to_follow : "Entity" = None, **kwargs):
+    def __init__(self, parent_app, origin=Vector3D.ZERO, rotation=Vector3D.ZERO, scale=Vector3D.ONE, _name="", to_follow : "Entity" = None, **kwargs):
         self.origin = origin
         self.rotation = rotation
         self.scale = scale
         self.model_matrix = ModelMatrix.from_transformations(origin, rotation, scale)
-        self.name = shortuuid.uuid() if name == "" else name
+        self.name = shortuuid.uuid() if _name == "" else _name
         self.parent_app = parent_app
         self.to_follow = to_follow
         self.initial_follow_delta = None
@@ -89,13 +89,13 @@ class Entity(ABC):
 
 class DrawnEntity(Entity):
 
-    def __init__(self, parent_app, mesh: [str|Mesh], origin=Vector3D.ZERO, rotation=Vector3D.ZERO, scale=Vector3D.ONE,
-                 name="", color="white", shader=None, **kwargs):
-        super().__init__(parent_app, origin, rotation, scale, name=name, **kwargs)
+    def __init__(self, parent_app, mesh: [str|Mesh], cull_distance=0., color="white", shader=None, **kwargs):
+        super().__init__(parent_app, **kwargs)
 
         if shader is None:
             shader = MeshShader(material_params={"diffuse_color" : color})
 
+        self.cull_distance = abs(cull_distance)
         self.shader = shader
 
         if type(mesh) is str:
@@ -104,6 +104,9 @@ class DrawnEntity(Entity):
         self.mesh = mesh
 
     def draw(self):
+        if 0. < self.cull_distance**2 < self.parent_app.camera.origin.distance_sq_to(self.origin):
+            return
+
         self.shader.draw(app=self.parent_app, mesh=self.mesh, model_matrix=self.model_matrix)
 
     def _update(self, delta):
@@ -115,8 +118,8 @@ class DrawnEntity(Entity):
 
 class Cube(DrawnEntity):
 
-    def __init__(self, parent_app, origin=Vector3D.ZERO, rotation=Vector3D.ZERO, scale=Vector3D.ONE, uv_mode = CubeMesh.UVMode.SAME, name="", color="white", shader=None):
-        super().__init__(parent_app, mesh=CubeMesh(uv_mode=uv_mode), origin=origin, rotation=rotation, scale=scale, name=name, color=color, shader=shader)
+    def __init__(self, parent_app, uv_mode = CubeMesh.UVMode.SAME, **kwargs):
+        super().__init__(parent_app, mesh=CubeMesh(uv_mode=uv_mode), **kwargs)
 
 
     def handle_event(self, ev):
@@ -128,13 +131,13 @@ class Cube(DrawnEntity):
 class Skybox(DrawnEntity):
     def __init__(self, sky_textures, parent_app=None):
         paths = TexturesManager.generate_cubemap_paths(**sky_textures)
-        cm, self.sky_color = TexturesManager.load_cubemap(paths, compute_dom_color=True)
 
         print("Computing skybox color...")
+        cm, self.sky_color = TexturesManager.load_cubemap(paths, compute_dom_color=True)
 
         shader = SkyboxShader(cubemap_id=cm)
 
-        super().__init__(parent_app, mesh=shader.sky_mesh, name="skybox", shader=shader)
+        super().__init__(parent_app, mesh=shader.sky_mesh, _name="skybox", shader=shader)
 
     @property
     def cubemap_id(self):
@@ -154,11 +157,9 @@ class Skybox(DrawnEntity):
         pass
 
 class Sphere(DrawnEntity):
-    def __init__(self, parent_app, origin=Vector3D.ZERO, rotation=Vector3D.ZERO, scale=Vector3D.ONE,
-                 slices=32, stacks=0, name="", color="white", shader=None, **kwargs):
+    def __init__(self, parent_app, slices=32, stacks=0, **kwargs):
         mesh = SphereMesh(n_slices=slices, n_stacks=stacks)
-        super().__init__(parent_app, mesh=mesh, origin=origin, rotation=rotation, scale=scale,
-                         name=name, color=color, shader=shader, **kwargs)
+        super().__init__(parent_app, mesh=mesh, **kwargs)
 
 
     def handle_event(self, ev):
@@ -169,12 +170,10 @@ class Sphere(DrawnEntity):
 
 
 class Plane(DrawnEntity):
-    def __init__(self, parent_app, origin=Vector3D.ZERO, normal=Vector3D.UP, scale=Vector3D.ONE, up_rotation = 0., color="white",
-                 name="", shader=None):
+    def __init__(self, parent_app, normal=Vector3D.UP, up_rotation = 0., **kwargs):
         rotation = Vector3D(*euler_from_vectors(normal)) + Vector3D.UP * up_rotation
 
-        super().__init__(parent_app, mesh=PlaneMesh(), origin=origin, rotation=rotation, scale=scale,
-                         name=name,color=color, shader=shader)
+        super().__init__(parent_app, mesh=PlaneMesh(), rotation=rotation, **kwargs)
 
     def _update(self, delta):
         pass

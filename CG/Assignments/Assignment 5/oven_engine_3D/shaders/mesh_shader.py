@@ -6,8 +6,9 @@ import numpy as np
 from OpenGL.GL import *
 from OpenGL.GLU import *
 
-from oven_engine_3D.shaders import BaseShader, DEFAULT_SHADER_DIR, add_missing
+from oven_engine_3D.shaders import BaseShader, DEFAULT_SHADER_DIR
 from oven_engine_3D.utils.geometry import Vector2D
+from oven_engine_3D.utils.misc import add_missing
 from oven_engine_3D.utils.textures import TexturesManager
 
 
@@ -56,7 +57,7 @@ class MeshShader(BaseShader):
     @staticmethod
     def inject_code(inject_source, inject_target,
                     injection_start=INJECTION_BEGIN_ID, injection_end=INJECTION_END_ID,
-                    tmp_shader_dir=INJECTED_CACHE_DIR, tmp_shader_prefix=INJECTED_PREFIX):
+                    tmp_shader_dir=INJECTED_CACHE_DIR, tmp_shader_prefix=INJECTED_PREFIX, overwrite=False):
         with open(inject_source) as file:
             injected_lines = file.readlines()
 
@@ -79,7 +80,10 @@ class MeshShader(BaseShader):
         pure_injected_name = os.path.basename(inject_source)
         pure_injected_name = os.path.splitext(pure_injected_name)[0]
 
-        tmp_file = os.path.join(tmp_shader_dir, f"{tmp_shader_prefix}{pure_injected_name}")
+        tmp_file = inject_target
+        if not overwrite:
+            tmp_file = os.path.join(tmp_shader_dir, f"{tmp_shader_prefix}{pure_injected_name}")
+
         open_mode = "w" if os.path.exists(tmp_file) else "x"
 
         with open(tmp_file, open_mode) as file:
@@ -112,6 +116,8 @@ class MeshShader(BaseShader):
             "transparency_mode": MeshShader.TransparencyMode.NONE,
             "alpha_cutoff": .2,
             "uv_scale": Vector2D.ONE,
+            "use_distance_fade": False,
+            "distance_fade": (60, 100),
             "uv_offset": Vector2D.ZERO,
         }
 
@@ -147,6 +153,8 @@ class MeshShader(BaseShader):
         self.set_uniform_int(params["transparency_mode"].value, "u_material.transparency_mode")
         self.set_uniform_vec2D(params["uv_scale"], "u_uv_scale")
         self.set_uniform_vec2D(params["uv_offset"], "u_uv_offset")
+        self.set_uniform_bool(params["use_distance_fade"], "u_material.use_distance_fade")
+        self.set_uniform_float(params["distance_fade"], "u_material.distance_fade")
 
     def set_camera_uniforms(self, camera: 'Camera'):
         self.set_uniform_matrix(camera.projection_matrix.values, "u_projection_matrix")

@@ -1,5 +1,5 @@
 from abc import abstractmethod, ABC
-from typing import Collection
+from typing import Collection, Literal
 
 import OpenGL.GLUT
 from OpenGL.GL import *
@@ -8,13 +8,9 @@ from OpenGL.error import GLError
 from pygame import Color
 
 from oven_engine_3D.utils.geometry import Vector3D, Vector2D
-from oven_engine_3D.utils.misc import is_collection
+from oven_engine_3D.utils.misc import is_collection, add_missing, get_color
 
 DEFAULT_SHADER_DIR = "shaders"
-
-
-def add_missing(dict1, dict2):
-    dict1.update({key: value for key, value in dict2.items() if not key in dict1})
 
 
 class BaseShader(ABC):
@@ -44,9 +40,7 @@ class BaseShader(ABC):
             return self.elem_count * self.elem_size
 
     def __init__(self, vert_shader_path, frag_shader_path, transparent=False, **kwargs):
-        self.vert_shader_path = vert_shader_path
-        self.frag_shader_path = frag_shader_path
-        self.renderingProgramID = BaseShader.get_shader_program(self.vert_shader_path, self.frag_shader_path)
+        self.renderingProgramID, self.vert_id, self.frag_id = BaseShader.get_shader_program(vert_shader_path, frag_shader_path)
 
         self.transparent = transparent
 
@@ -111,15 +105,13 @@ class BaseShader(ABC):
 
         assert glGetProgramiv(progID, GL_LINK_STATUS) == 1, "Failed to link"
 
-        return progID
+        return progID, vert_shader, frag_shader
 
     @staticmethod
     def compile_shader_file(shader_file: str, shader_type: int):
         assert shader_type in [GL_VERTEX_SHADER, GL_FRAGMENT_SHADER], "Invalid shader type"
 
         shader_path = shader_file
-        """if shader_folder != "":
-            shader_path = path.join(shader_folder, shader_file)"""
 
         print(f"\tCompiling shader file {shader_path}...", end="")
 
@@ -143,7 +135,7 @@ class BaseShader(ABC):
         result = glGetShaderiv(shader_id, GL_COMPILE_STATUS)
         assert result == 1, (f"Couldn't compile shader {shader_file.name} \n"
                              "Shader compilation Log:\n"
-                             f"{glGetShaderInfoLog(shader_id).decode('ascii')}")
+                             f"{BaseShader.shader_log(shader_id)}")
 
         lookup[shader_path] = shader_id
 
@@ -163,23 +155,13 @@ class BaseShader(ABC):
 
         glBindBuffer(GL_ARRAY_BUFFER, 0)
 
-    @staticmethod
-    def __get_color(color):
-        if type(color) is str:
-            color = Color(color)
-        if type(color) is Color:
-            color = color.normalize()
-        elif type(color) in [int, float]:
-            color = color, color, color, 1.
-
-        if len(color) == 3:
-            color = (*color, 1.)
-
-        return color
-
     @property
-    def info_log(self):
-        return glGetProgramInfoLog(self.renderingProgramID)
+    def program_log(self):
+        return glGetProgramInfoLog(self.renderingProgramID).decode('ascii')
+
+    @staticmethod
+    def shader_log(shader_id):
+        return glGetShaderInfoLog(shader_id).decode('ascii')
 
     def enable_attrib_array(self, attrib_name):
         attrib_loc = self.get_attrib_loc(attrib_name)
@@ -197,7 +179,7 @@ class BaseShader(ABC):
         try:
             glUseProgram(self.renderingProgramID)
         except OpenGL.error.GLError:
-            print(f"Failed to use shader - {self.info_log}")
+            print(f"Failed to use shader - {self.program_log}")
             raise
 
     @abstractmethod
@@ -231,13 +213,23 @@ class BaseShader(ABC):
         tmp = self.get_uniform_float(uniform_name, 4)
         return Color(*(int(v * 255.) for v in tmp))
 
+    def get_uniform_vector(self, uniform_name, dim:Literal[2,3], is_homogenous=False):
+        count = dim + int(is_homogenous)
+
+        tmp = self.get_uniform_float(uniform_name, count)
+        if is_homogenous:
+            tmp = [v/tmp[-1] for v in tmp[:-1]]
+
+        if count == 2:
+            return Vector2D(tmp)
+        return Vector3D(tmp)
+
     def get_uniform_value(self, uniform_name, datatype, count=1):
         loc = self.get_uniform_loc(uniform_name)
-        output = (datatype * count)()
-
         if loc == -1:
             return None
 
+        output = (datatype * count)()
         glGetUniformfv(self.renderingProgramID, loc, output)
 
         return list(output) if count > 1 else output[0]
@@ -248,7 +240,7 @@ class BaseShader(ABC):
 
     def set_uniform_color(self, color, uniform_name):
         loc = self.get_uniform_loc(uniform_name)
-        color = BaseShader.__get_color(color)
+        color = get_color(color)
 
         glUniform4f(loc, *color)
 

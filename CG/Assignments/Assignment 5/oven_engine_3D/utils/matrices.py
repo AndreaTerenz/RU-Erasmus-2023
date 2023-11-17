@@ -14,7 +14,7 @@ def set_values_in_matrix(matrix, idx_val_zip):
 
 class Matrix(ABC):
     def __init__(self, rows = 4, cols = 4):
-        self._matrix = np.eye(rows, cols).flatten()
+        self._matrix = np.eye(rows, cols)
         self.rows = rows
         self.cols = cols
 
@@ -26,7 +26,7 @@ class Matrix(ABC):
 
     @property
     def identity(self):
-        return np.eye(self.rows, self.cols).flatten()
+        return np.eye(self.rows, self.cols)
 
     def load_identity(self):
         self._matrix = self.identity
@@ -47,7 +47,7 @@ class Matrix(ABC):
 
     def add_transformation(self, other):
         other = np.array(other).reshape(4, 4)
-        self._matrix = (self._matrix.reshape(4,4) @ other).flatten()
+        self._matrix = (self._matrix @ other)
 
     @property
     def values(self):
@@ -122,34 +122,6 @@ class ModelMatrix(Matrix):
         self.add_transformation(rot_mat_y)
         self.add_transformation(rot_mat_z)
 
-    def look_at(self, target, up_vector = Vector3D.UP):
-        # Calculate Z-axis
-        z_axis = target.normalized
-
-        # Calculate X-axis
-        x_axis = up_vector.cross(z_axis).normalized
-
-        # Calculate Y-axis
-        y_axis = z_axis.cross(x_axis)
-
-        # Form rotation matrix
-        rotation_matrix = np.array([x_axis, y_axis, z_axis])
-
-        # Extract Euler angles (in XYZ order)
-        sy = np.sqrt(rotation_matrix[0, 0] * rotation_matrix[0, 0] + rotation_matrix[1, 0] * rotation_matrix[1, 0])
-        singular = sy < 1e-6
-
-        if not singular:
-            x = np.arctan2(rotation_matrix[2, 1], rotation_matrix[2, 2])
-            y = np.arctan2(-rotation_matrix[2, 0], sy)
-            z = np.arctan2(rotation_matrix[1, 0], rotation_matrix[0, 0])
-        else:
-            x = np.arctan2(-rotation_matrix[1, 2], rotation_matrix[1, 1])
-            y = np.arctan2(-rotation_matrix[2, 0], sy)
-            z = 0
-
-        self.add_rotation(x, y, z)
-
     def add_scale(self, x : [float|Vector3D], y = None, z = None):
         if type(x) is Vector3D:
             scale = x
@@ -162,14 +134,6 @@ class ModelMatrix(Matrix):
         scale_matrix = set_values_in_matrix(np.eye(4).flatten(), zip([0, 5, 10], [scale.x, scale.y, scale.z]))
 
         self.add_transformation(scale_matrix)
-
-    # YOU CAN TRY TO MAKE PUSH AND POP (AND COPY) LESS DEPENDANT ON GARBAGE COLLECTION
-    # THAT CAN FIX SMOOTHNESS ISSUES ON SOME COMPUTERS
-    def push_matrix(self):
-        self.stack.append(self.copy_matrix().tolist())
-
-    def pop_matrix(self):
-        self._matrix = self.stack.pop()
 
 
 # The ViewMatrix class holds the camera's coordinate frame and
@@ -219,7 +183,7 @@ class ViewMatrix(Matrix):
         c = np.cos(angle)
         s = np.sin(angle)
 
-        # Create the rotation matrix around the global y-axis
+        # Create the rotation matrix around the global x-axis
         R_x = np.array([
             [1, 0, 0, 0],
             [0, c, -s, 0],
@@ -247,7 +211,7 @@ class ViewMatrix(Matrix):
         c = np.cos(angle)
         s = np.sin(angle)
 
-        # Create the rotation matrix around the global y-axis
+        # Create the rotation matrix around the global z-axis
         R_z = np.array([
             [c, -s, 0, 0],
             [s, c, 0, 0],
@@ -262,15 +226,6 @@ class ViewMatrix(Matrix):
         self.v = self.v.rotate_with_matrix(rot_matrix)
         self.n = self.n.rotate_with_matrix(rot_matrix)
 
-    def get_axis_from_matrix(self):
-        """
-        Extract the values for each axis vector from the matrix
-        """
-
-        return Vector3D(self._matrix[0], self._matrix[1], self._matrix[2]), \
-                Vector3D(self._matrix[4], self._matrix[5], self._matrix[6]), \
-                Vector3D(self._matrix[8], self._matrix[9], self._matrix[10])
-
     @staticmethod
     def __rotate_axes(a, b, angle):
         c = np.cos(angle)
@@ -284,13 +239,18 @@ class ViewMatrix(Matrix):
 
     @property
     def values(self):
-        return [self.u.x, self.u.y, self.u.z, -self.eye.dot(self.u),
-                self.v.x, self.v.y, self.v.z, -self.eye.dot(self.v),
-                self.n.x, self.n.y, self.n.z, -self.eye.dot(self.n),
-                0,        0,        0,        1]
+        return np.array([[self.u.x, self.u.y, self.u.z, -self.eye.dot(self.u)],
+                [self.v.x, self.v.y, self.v.z, -self.eye.dot(self.v)],
+                [self.n.x, self.n.y, self.n.z, -self.eye.dot(self.n)],
+                [0,        0,        0,        1]])
 
 class ProjectionMatrix(Matrix):
-    def __init__(self):
+    __create_key = object()
+
+    def __init__(self, key):
+        assert(key == ProjectionMatrix.__create_key), \
+            "ProjectionMatrix must be created using the static perspective() or orthographic() methods!"
+
         super().__init__(4, 4)
 
         self.left = 0.
@@ -309,7 +269,7 @@ class ProjectionMatrix(Matrix):
         near, far = min(near, far), max(near, far)
         fov = math.fmod(fov, math.tau)
 
-        output = ProjectionMatrix()
+        output = ProjectionMatrix(key=ProjectionMatrix.__create_key)
 
         output.fov = fov
         output.near = near
@@ -333,7 +293,7 @@ class ProjectionMatrix(Matrix):
         hw = width / 2.
         hh = height / 2.
 
-        output = ProjectionMatrix()
+        output = ProjectionMatrix(key=ProjectionMatrix.__create_key)
         output.aspect_ratio = hw/hh
         output.left = -hw
         output.right = hw
@@ -347,34 +307,35 @@ class ProjectionMatrix(Matrix):
 
     @property
     def values(self):
-        rl_dist = self.right - self.left
-        tb_dist = self.top - self.bottom
-        fn_dist = self.far - self.near
+        rl_inv_dist = 1. / (self.right - self.left)
+        tb_inv_dist = 1. / (self.top - self.bottom)
+        nf_inv_dist = 1. / (self.near - self.far)
 
         if self.is_orthographic:
-            A = 2 / rl_dist
-            B = -(self.right + self.left) / rl_dist
-            C = 2 / tb_dist
-            D = -(self.top + self.bottom) / tb_dist
-            E = 2 / -fn_dist
-            F = (self.near + self.far) / -fn_dist
+            p11 = 2 * rl_inv_dist
+            p22 = 2 * tb_inv_dist
+            p33 = 2 * nf_inv_dist
+            p34 = (self.near + self.far) * nf_inv_dist
 
-            return [A,0,0,B,
-                    0,C,0,D,
-                    0,0,E,F,
-                    0,0,0,1]
+            """A = 2 * rl_inv_dist
+            # B = -(self.right + self.left) * rl_inv_dist
+            C = 2 * tb_inv_dist
+            # D = -(self.top + self.bottom) * tb_inv_dist
+            E = 2 * nf_inv_dist
+            F = (self.near + self.far) * nf_inv_dist
+
+            return np.array([[A,0,0,B],
+                            [0,C,0,D],
+                            [0,0,E,F],
+                            [0,0,0,1]])"""
         else:
-            p11 = 2*self.near / rl_dist
-            p13 = (self.right + self.left) / rl_dist
+            p11 = 2 * self.near * rl_inv_dist
+            p22 = 2 * self.near * tb_inv_dist
+            p33 = (self.near + self.far) * nf_inv_dist
+            p34 = 2 * self.near * self.far * nf_inv_dist
 
-            p22 = 2*self.near / tb_dist
-            p23 = (self.top + self.bottom) / tb_dist
-
-            p33 = (self.near + self.far) / (-fn_dist)
-            p34 = 2 * self.near * self.far / (-fn_dist)
-
-            return [p11,  0,  p13,  0,
-                    0,  p22,  p23,  0,
-                    0,    0,  p33,p34,
-                    0,    0,   -1,  0]
+        return np.array([[p11,  0,  0,  0],
+                        [0,  p22,  0,  0],
+                        [0,    0,  p33,p34],
+                        [0,    0,   -1,  0]])
 
